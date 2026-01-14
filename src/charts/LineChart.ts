@@ -3,19 +3,16 @@
  * SVG line chart with cyberpunk styling, area fills, and glow effects
  */
 
-import type {
-  LineChartOptions,
-  DataPoint,
-  DataSeries,
-  ChartPadding,
-  ChartTheme,
-  ChartEventType,
-  ChartEventHandler,
-  ChartEvent,
-  Point,
-  AnimationConfig,
-  GlowConfig,
-} from '../types';
+import { chartColors, getThemeColor } from '../utils/colors';
+import {
+  createBandScale,
+  createInvertedScale,
+  createLinearScale,
+  generateTicks,
+  niceExtent,
+  smoothPath,
+  stepPath,
+} from '../utils/math';
 import {
   createSVGRoot,
   createDefs,
@@ -33,24 +30,18 @@ import {
   svgToString,
   applyGlowFilter,
 } from '../utils/svg';
-import {
-  getYExtent,
-  niceExtent,
-  generateTicks,
-  createLinearScale,
-  createInvertedScale,
-  createBandScale,
-  smoothPath,
-  stepPath,
-  getEasing,
-} from '../utils/math';
-import {
-  getThemeColor,
-  getThemeColorLight,
-  hexToRGBA,
-  generateSeriesColors,
-  chartColors,
-} from '../utils/colors';
+
+import type {
+  ChartEvent,
+  ChartEventHandler,
+  ChartEventType,
+  ChartPadding,
+  ChartTheme,
+  DataPoint,
+  DataSeries,
+  LineChartOptions,
+  Point,
+} from '../types';
 
 // ============================================================================
 // Default Options
@@ -124,7 +115,7 @@ export class LineChart {
     // Get container element
     if (typeof container === 'string') {
       const el = document.querySelector(container);
-      if (!el) throw new Error(`Container not found: ${container}`);
+      if (!el) {throw new Error(`Container not found: ${container}`);}
       this.container = el as HTMLElement;
     } else {
       this.container = container;
@@ -167,10 +158,10 @@ export class LineChart {
   }
 
   private normalizeData(data: DataPoint[] | DataSeries[]): DataSeries[] {
-    if (data.length === 0) return [];
+    if (data.length === 0) {return [];}
 
     // Check if it's already series format
-    if ('data' in data[0] && Array.isArray((data[0] as DataSeries).data)) {
+    if ('data' in data[0] && Array.isArray((data[0]).data)) {
       return data as DataSeries[];
     }
 
@@ -215,7 +206,7 @@ export class LineChart {
   }
 
   private createDefinitions(): void {
-    if (!this.svg) return;
+    if (!this.svg) {return;}
 
     this.defs = createDefs();
     this.svg.appendChild(this.defs);
@@ -224,7 +215,7 @@ export class LineChart {
     const themes: ChartTheme[] = ['cyan', 'magenta', 'green', 'yellow'];
     themes.forEach((theme) => {
       const glowConfig = typeof this.options.glow === 'object' ? this.options.glow : {};
-      const filter = createGlowFilter(`glow-${theme}`, theme, glowConfig as GlowConfig);
+      const filter = createGlowFilter(`glow-${theme}`, theme, glowConfig);
       this.defs!.appendChild(filter);
     });
 
@@ -242,7 +233,7 @@ export class LineChart {
     // Create scanlines pattern if enabled
     if (this.options.scanlines) {
       const pattern = createScanlinesPattern('scanlines');
-      this.defs!.appendChild(pattern);
+      this.defs.appendChild(pattern);
     }
   }
 
@@ -251,7 +242,7 @@ export class LineChart {
   // ==========================================================================
 
   private render(): void {
-    if (!this.svg) return;
+    if (!this.svg) {return;}
 
     // Clear existing chart area
     if (this.chartArea) {
@@ -313,7 +304,7 @@ export class LineChart {
 
     // Calculate X scale - categorical or numeric
     let xScale: (value: string | number) => number;
-    let xLabels: (string | number)[] = allXValues;
+    const xLabels: (string | number)[] = allXValues;
 
     const firstX = allXValues[0];
     if (typeof firstX === 'number') {
@@ -336,7 +327,7 @@ export class LineChart {
     yScale: (value: number) => number,
     xLabels: (string | number)[]
   ): void {
-    if (!this.chartArea) return;
+    if (!this.chartArea) {return;}
 
     const padding = this.options.padding as ChartPadding;
     const axisGroup = createGroup(
@@ -405,7 +396,7 @@ export class LineChart {
       // X ticks and labels
       const labelStep = Math.ceil(xLabels.length / (this.options.xAxis.ticks || 5));
       xLabels.forEach((label, index) => {
-        if (index % labelStep !== 0 && index !== xLabels.length - 1) return;
+        if (index % labelStep !== 0 && index !== xLabels.length - 1) {return;}
 
         const x = xScale(label);
 
@@ -443,12 +434,12 @@ export class LineChart {
     xScale: (value: string | number) => number,
     yScale: (value: number) => number
   ): void {
-    if (!this.chartArea) return;
+    if (!this.chartArea) {return;}
 
     const padding = this.options.padding as ChartPadding;
 
     this.series.forEach((series, seriesIndex) => {
-      if (series.visible === false) return;
+      if (series.visible === false) {return;}
 
       const seriesGroup = createGroup(
         `${this.options.classPrefix}__series`,
@@ -567,7 +558,7 @@ export class LineChart {
   }
 
   private renderLegend(): void {
-    if (!this.svg) return;
+    if (!this.svg) {return;}
 
     const legendGroup = createGroup(`${this.options.classPrefix}__legend`);
     const itemSpacing = 100;
@@ -603,7 +594,7 @@ export class LineChart {
   }
 
   private renderScanlines(): void {
-    if (!this.svg) return;
+    if (!this.svg) {return;}
 
     const scanlineRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     scanlineRect.setAttribute('x', '0');
@@ -653,7 +644,7 @@ export class LineChart {
   }
 
   private showTooltip(content: string, x: number, y: number): void {
-    if (!this.tooltipElement) return;
+    if (!this.tooltipElement) {return;}
 
     this.tooltipElement.innerHTML = content;
     this.tooltipElement.style.opacity = '1';
@@ -665,7 +656,7 @@ export class LineChart {
   }
 
   private hideTooltip(): void {
-    if (!this.tooltipElement) return;
+    if (!this.tooltipElement) {return;}
     this.tooltipElement.style.opacity = '0';
   }
 
@@ -696,7 +687,7 @@ export class LineChart {
             <span style="width: 10px; height: 10px; background: ${color}; border-radius: 50%;"></span>
             <strong>${series.name}</strong>
           </div>
-          <div>${point.label || point.x}: <strong style="color: ${color}">${point.y}</strong></div>
+          <div>${point.label || String(point.x)}: <strong style="color: ${color}">${point.y}</strong></div>
         `;
       }
 
@@ -757,8 +748,8 @@ export class LineChart {
    * Resize chart
    */
   resize(width?: number, height?: number): void {
-    if (width) this.options.width = width;
-    if (height) this.options.height = height;
+    if (width) {this.options.width = width;}
+    if (height) {this.options.height = height;}
 
     if (this.svg) {
       this.svg.setAttribute('width', String(this.options.width));
@@ -803,7 +794,7 @@ export class LineChart {
    * Get SVG element
    */
   getSVG(): SVGSVGElement {
-    if (!this.svg) throw new Error('Chart not initialized');
+    if (!this.svg) {throw new Error('Chart not initialized');}
     return this.svg;
   }
 
@@ -811,7 +802,7 @@ export class LineChart {
    * Export as SVG string
    */
   toSVG(): string {
-    if (!this.svg) throw new Error('Chart not initialized');
+    if (!this.svg) {throw new Error('Chart not initialized');}
     return svgToString(this.svg);
   }
 

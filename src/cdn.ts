@@ -9,54 +9,45 @@
  * </script>
  */
 
-// Import chart classes
-import { LineChart } from './charts/LineChart';
 import { BarChart } from './charts/BarChart';
-import { GaugeChart } from './charts/GaugeChart';
 import { DonutChart } from './charts/DonutChart';
+import { GaugeChart } from './charts/GaugeChart';
+import { LineChart } from './charts/LineChart';
 import { Sparkline } from './charts/Sparkline';
-
-// Import factory function
-import { createChart } from './index';
-
-// Import color utilities
 import {
+  chartColors,
+  createGradient,
   cyberColors,
-  getThemeColor,
-  getThemeColorRGB,
-  getThemeColorLight,
-  getThemeColorDark,
+  darken,
+  generateSeriesColors,
+  getContrastColor,
   getGlowColor,
+  getGlowShadow,
+  getThemeColor,
+  getThemeColorDark,
+  getThemeColorLight,
+  getThemeColorRGB,
+  getThemeGradient,
   hexToRGB,
-  rgbToHex,
   hexToRGBA,
   lighten,
-  darken,
-  withOpacity,
   mixColors,
-  getContrastColor,
-  generateSeriesColors,
-  getThemeGradient,
-  createGradient,
-  getGlowShadow,
-  chartColors,
+  rgbToHex,
+  withOpacity,
 } from './utils/colors';
-
-// Import math utilities
 import {
-  lerp,
   clamp,
-  scale,
-  round,
-  sum,
-  mean,
-  median,
   easings,
   getEasing,
+  lerp,
+  mean,
+  median,
+  round,
+  scale,
+  sum,
 } from './utils/math';
 
-// Import version
-import { VERSION } from './index';
+import { createChart, VERSION } from './index';
 
 /**
  * CyberCharts namespace for UMD builds

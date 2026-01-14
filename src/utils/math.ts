@@ -33,7 +33,7 @@ export function scale(
   outMin: number,
   outMax: number
 ): number {
-  if (inMax === inMin) return outMin;
+  if (inMax === inMin) {return outMin;}
   return ((value - inMin) / (inMax - inMin)) * (outMax - outMin) + outMin;
 }
 
@@ -60,12 +60,12 @@ export function snapTo(value: number, step: number): number {
  * Get min and max from an array of numbers
  */
 export function extent(values: number[]): [number, number] {
-  if (values.length === 0) return [0, 0];
+  if (values.length === 0) {return [0, 0];}
   let min = Infinity;
   let max = -Infinity;
   for (const v of values) {
-    if (v < min) min = v;
-    if (v > max) max = v;
+    if (v < min) {min = v;}
+    if (v > max) {max = v;}
   }
   return [min, max];
 }
@@ -102,10 +102,10 @@ export function niceExtent(min: number, max: number, tickCount: number = 5): [nu
   const normalizedStep = roughStep / magnitude;
 
   let niceStep: number;
-  if (normalizedStep <= 1) niceStep = 1;
-  else if (normalizedStep <= 2) niceStep = 2;
-  else if (normalizedStep <= 5) niceStep = 5;
-  else niceStep = 10;
+  if (normalizedStep <= 1) {niceStep = 1;}
+  else if (normalizedStep <= 2) {niceStep = 2;}
+  else if (normalizedStep <= 5) {niceStep = 5;}
+  else {niceStep = 10;}
 
   niceStep *= magnitude;
 
@@ -292,9 +292,9 @@ export function calculateControlPoints(
   const d3 = distance(p2, p3);
 
   const fa = tension * d1 / (d1 + d2);
-  const fb = tension * d2 / (d1 + d2);
+  const _fb = tension * d2 / (d1 + d2);
   const fc = tension * d2 / (d2 + d3);
-  const fd = tension * d3 / (d2 + d3);
+  const _fd = tension * d3 / (d2 + d3);
 
   return {
     cp1: {
@@ -312,7 +312,7 @@ export function calculateControlPoints(
  * Generate smooth curve path data for a series of points
  */
 export function smoothPath(points: Point[], tension: number = 0.5): string {
-  if (points.length < 2) return '';
+  if (points.length < 2) {return '';}
   if (points.length === 2) {
     return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
   }
@@ -337,13 +337,13 @@ export function smoothPath(points: Point[], tension: number = 0.5): string {
  * Generate step path data
  */
 export function stepPath(points: Point[], position: 'before' | 'after' | 'middle' = 'middle'): string {
-  if (points.length < 2) return '';
+  if (points.length < 2) {return '';}
 
   let path = `M ${points[0].x} ${points[0].y}`;
 
   for (let i = 1; i < points.length; i++) {
-    const prev = points[i - 1]!;
-    const curr = points[i]!;
+    const prev = points[i - 1];
+    const curr = points[i];
 
     if (position === 'before') {
       path += ` V ${curr.y} H ${curr.x}`;
@@ -373,7 +373,7 @@ export function sum(values: number[]): number {
  * Calculate the mean of an array
  */
 export function mean(values: number[]): number {
-  if (values.length === 0) return 0;
+  if (values.length === 0) {return 0;}
   return sum(values) / values.length;
 }
 
@@ -381,10 +381,10 @@ export function mean(values: number[]): number {
  * Calculate the median of an array
  */
 export function median(values: number[]): number {
-  if (values.length === 0) return 0;
+  if (values.length === 0) {return 0;}
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 !== 0 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
 /**
@@ -392,7 +392,7 @@ export function median(values: number[]): number {
  */
 export function toPercentages(values: number[]): number[] {
   const total = sum(values);
-  if (total === 0) return values.map(() => 0);
+  if (total === 0) {return values.map(() => 0);}
   return values.map(v => (v / total) * 100);
 }
 
@@ -401,6 +401,6 @@ export function toPercentages(values: number[]): number[] {
  */
 export function normalize(values: number[]): number[] {
   const [min, max] = extent(values);
-  if (max === min) return values.map(() => 0.5);
+  if (max === min) {return values.map(() => 0.5);}
   return values.map(v => (v - min) / (max - min));
 }

@@ -3,15 +3,8 @@
  * Radial gauge with cyberpunk styling and threshold zones
  */
 
-import type {
-  GaugeChartOptions,
-  GaugeThreshold,
-  ChartTheme,
-  ChartEventType,
-  ChartEventHandler,
-  ChartEvent,
-  GlowConfig,
-} from '../types';
+import { chartColors, getThemeColor, hexToRGBA } from '../utils/colors';
+import { degToRad, lerp, clamp } from '../utils/math';
 import {
   createSVGRoot,
   createDefs,
@@ -27,8 +20,14 @@ import {
   svgToString,
   applyGlowFilter,
 } from '../utils/svg';
-import { degToRad, lerp, clamp } from '../utils/math';
-import { getThemeColor, chartColors, hexToRGBA } from '../utils/colors';
+
+import type {
+  ChartEvent,
+  ChartEventHandler,
+  ChartEventType,
+  ChartTheme,
+  GaugeChartOptions,
+} from '../types';
 
 // ============================================================================
 // Default Options
@@ -87,7 +86,7 @@ export class GaugeChart {
   constructor(container: HTMLElement | string, options: GaugeChartOptions) {
     if (typeof container === 'string') {
       const el = document.querySelector(container);
-      if (!el) throw new Error(`Container not found: ${container}`);
+      if (!el) {throw new Error(`Container not found: ${container}`);}
       this.container = el as HTMLElement;
     } else {
       this.container = container;
@@ -146,7 +145,7 @@ export class GaugeChart {
   }
 
   private createDefinitions(): void {
-    if (!this.svg) return;
+    if (!this.svg) {return;}
 
     this.defs = createDefs();
     this.svg.appendChild(this.defs);
@@ -155,7 +154,7 @@ export class GaugeChart {
     const themes: ChartTheme[] = ['cyan', 'magenta', 'green', 'yellow'];
     themes.forEach((theme) => {
       const glowConfig = typeof this.options.glow === 'object' ? this.options.glow : {};
-      const filter = createGlowFilter(`glow-${theme}`, theme, glowConfig as GlowConfig);
+      const filter = createGlowFilter(`glow-${theme}`, theme, glowConfig);
       this.defs!.appendChild(filter);
     });
 
@@ -168,14 +167,14 @@ export class GaugeChart {
       { offset: '0%', color: lightColor },
       { offset: '100%', color },
     ]);
-    this.defs!.appendChild(gradient);
+    this.defs.appendChild(gradient);
 
     // Create track gradient (dark)
     const trackGradient = createLinearGradient('gauge-track-gradient', [
       { offset: '0%', color: chartColors.background, opacity: 0.5 },
       { offset: '100%', color: chartColors.background, opacity: 0.8 },
     ]);
-    this.defs!.appendChild(trackGradient);
+    this.defs.appendChild(trackGradient);
   }
 
   // ==========================================================================
@@ -183,7 +182,7 @@ export class GaugeChart {
   // ==========================================================================
 
   private render(): void {
-    if (!this.svg) return;
+    if (!this.svg) {return;}
 
     if (this.chartArea) {
       this.svg.removeChild(this.chartArea);
@@ -236,7 +235,7 @@ export class GaugeChart {
   }
 
   private renderTrack(centerX: number, centerY: number, radius: number): void {
-    if (!this.chartArea) return;
+    if (!this.chartArea) {return;}
 
     const trackPath = describeArc(
       centerX,
@@ -260,9 +259,9 @@ export class GaugeChart {
     centerX: number,
     centerY: number,
     outerRadius: number,
-    innerRadius: number
+    _innerRadius: number
   ): void {
-    if (!this.chartArea) return;
+    if (!this.chartArea) {return;}
 
     const thresholdGroup = createGroup(`${this.options.classPrefix}__thresholds`);
     const sortedThresholds = [...this.options.thresholds].sort((a, b) => a.value - b.value);
@@ -299,7 +298,7 @@ export class GaugeChart {
   }
 
   private renderValueArc(centerX: number, centerY: number, radius: number): void {
-    if (!this.chartArea) return;
+    if (!this.chartArea) {return;}
 
     const progress = clamp(
       (this.currentValue - this.options.min) / (this.options.max - this.options.min),
@@ -358,7 +357,7 @@ export class GaugeChart {
   }
 
   private renderTicks(centerX: number, centerY: number, outerRadius: number): void {
-    if (!this.chartArea) return;
+    if (!this.chartArea) {return;}
 
     const tickGroup = createGroup(`${this.options.classPrefix}__ticks`);
     const tickLength = 8;
@@ -403,7 +402,7 @@ export class GaugeChart {
   }
 
   private renderCenterValue(centerX: number, centerY: number): void {
-    if (!this.chartArea) return;
+    if (!this.chartArea) {return;}
 
     // Determine color based on thresholds
     let valueColor = getThemeColor(this.options.theme);
@@ -429,7 +428,7 @@ export class GaugeChart {
   }
 
   private renderMinMaxLabels(centerX: number, centerY: number, radius: number): void {
-    if (!this.chartArea) return;
+    if (!this.chartArea) {return;}
 
     const labelRadius = radius - this.options.thickness - 15;
 
@@ -459,7 +458,7 @@ export class GaugeChart {
   }
 
   private renderLabel(centerX: number, centerY: number): void {
-    if (!this.chartArea) return;
+    if (!this.chartArea) {return;}
 
     const label = createText(centerX, centerY + 30, this.options.label, {
       fill: chartColors.text,
@@ -565,8 +564,8 @@ export class GaugeChart {
    * Resize chart
    */
   resize(width?: number, height?: number): void {
-    if (width) this.options.width = width;
-    if (height) this.options.height = height;
+    if (width) {this.options.width = width;}
+    if (height) {this.options.height = height;}
 
     if (this.svg) {
       this.svg.setAttribute('width', String(this.options.width));
@@ -602,7 +601,7 @@ export class GaugeChart {
    * Get SVG element
    */
   getSVG(): SVGSVGElement {
-    if (!this.svg) throw new Error('Chart not initialized');
+    if (!this.svg) {throw new Error('Chart not initialized');}
     return this.svg;
   }
 
@@ -610,7 +609,7 @@ export class GaugeChart {
    * Export as SVG string
    */
   toSVG(): string {
-    if (!this.svg) throw new Error('Chart not initialized');
+    if (!this.svg) {throw new Error('Chart not initialized');}
     return svgToString(this.svg);
   }
 

@@ -108,5 +108,5 @@ module.exports = {
       },
     },
   ],
-  ignorePatterns: ['dist', 'node_modules', 'coverage', '*.min.js', '*.d.ts'],
+  ignorePatterns: ['dist', 'node_modules', 'coverage', '*.min.js', '*.d.ts', 'src/ember/**/*'],
 };

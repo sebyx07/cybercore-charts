@@ -3,8 +3,9 @@
  * Helper functions for creating and manipulating SVG elements
  */
 
-import type { ChartTheme, Point, GlowConfig } from '../types';
 import { getThemeColor, getGlowColor } from './colors';
+
+import type { ChartTheme, Point, GlowConfig } from '../types';
 
 // ============================================================================
 // SVG Namespace
@@ -90,12 +91,12 @@ export function createGroup(
  * Convert points to a linear path string
  */
 export function pointsToPath(points: Point[], close: boolean = false): string {
-  if (points.length === 0) return '';
+  if (points.length === 0) {return '';}
 
-  const first = points[0]!;
+  const first = points[0];
   let path = `M ${first.x} ${first.y}`;
   for (let i = 1; i < points.length; i++) {
-    const p = points[i]!;
+    const p = points[i];
     path += ` L ${p.x} ${p.y}`;
   }
 
@@ -158,18 +159,18 @@ export function createAreaPath(
     className?: string;
   } = {}
 ): SVGPathElement {
-  if (points.length === 0) return createPath('');
+  if (points.length === 0) {return createPath('');}
 
   const { fill = 'currentColor', opacity = 0.3, className } = options;
-  const firstPoint = points[0]!;
-  const lastPoint = points[points.length - 1]!;
+  const firstPoint = points[0];
+  const lastPoint = points[points.length - 1];
 
   // Create path: start at first point, draw line, then drop to baseline and back
   let d = `M ${firstPoint.x} ${baselineY}`;
   d += ` L ${firstPoint.x} ${firstPoint.y}`;
 
   for (let i = 1; i < points.length; i++) {
-    const point = points[i]!;
+    const point = points[i];
     d += ` L ${point.x} ${point.y}`;
   }
 

@@ -3,15 +3,8 @@
  * Donut/pie chart with cyberpunk styling and segment interactions
  */
 
-import type {
-  DonutChartOptions,
-  DonutSegment,
-  ChartTheme,
-  ChartEventType,
-  ChartEventHandler,
-  ChartEvent,
-  GlowConfig,
-} from '../types';
+import { chartColors, generateSeriesColors, getThemeColor } from '../utils/colors';
+import { degToRad, sum } from '../utils/math';
 import {
   createSVGRoot,
   createDefs,
@@ -24,8 +17,15 @@ import {
   svgToString,
   applyGlowFilter,
 } from '../utils/svg';
-import { sum, toPercentages, degToRad } from '../utils/math';
-import { getThemeColor, generateSeriesColors, chartColors, hexToRGBA } from '../utils/colors';
+
+import type {
+  ChartEvent,
+  ChartEventHandler,
+  ChartEventType,
+  ChartTheme,
+  DonutChartOptions,
+  DonutSegment,
+} from '../types';
 
 // ============================================================================
 // Default Options
@@ -89,7 +89,7 @@ export class DonutChart {
   constructor(container: HTMLElement | string, options: DonutChartOptions) {
     if (typeof container === 'string') {
       const el = document.querySelector(container);
-      if (!el) throw new Error(`Container not found: ${container}`);
+      if (!el) {throw new Error(`Container not found: ${container}`);}
       this.container = el as HTMLElement;
     } else {
       this.container = container;
@@ -167,7 +167,7 @@ export class DonutChart {
   }
 
   private createDefinitions(): void {
-    if (!this.svg) return;
+    if (!this.svg) {return;}
 
     this.defs = createDefs();
     this.svg.appendChild(this.defs);
@@ -176,7 +176,7 @@ export class DonutChart {
     const themes: ChartTheme[] = ['cyan', 'magenta', 'green', 'yellow'];
     themes.forEach((theme) => {
       const glowConfig = typeof this.options.glow === 'object' ? this.options.glow : {};
-      const filter = createGlowFilter(`glow-${theme}`, theme, glowConfig as GlowConfig);
+      const filter = createGlowFilter(`glow-${theme}`, theme, glowConfig);
       this.defs!.appendChild(filter);
     });
   }
@@ -207,7 +207,7 @@ export class DonutChart {
   // ==========================================================================
 
   private render(): void {
-    if (!this.svg) return;
+    if (!this.svg) {return;}
 
     if (this.chartArea) {
       this.svg.removeChild(this.chartArea);
@@ -255,7 +255,7 @@ export class DonutChart {
     outerRadius: number,
     innerRadius: number
   ): void {
-    if (!this.chartArea) return;
+    if (!this.chartArea) {return;}
 
     const segmentsGroup = createGroup(`${this.options.classPrefix}__segments`);
 
@@ -326,7 +326,7 @@ export class DonutChart {
   }
 
   private renderLabels(centerX: number, centerY: number, outerRadius: number): void {
-    if (!this.chartArea) return;
+    if (!this.chartArea) {return;}
 
     const labelsGroup = createGroup(`${this.options.classPrefix}__labels`);
     const total = sum(this.segments.map((s) => s.value));
@@ -371,7 +371,7 @@ export class DonutChart {
   }
 
   private renderCenterText(centerX: number, centerY: number): void {
-    if (!this.chartArea) return;
+    if (!this.chartArea) {return;}
 
     const centerGroup = createGroup(`${this.options.classPrefix}__center`);
 
@@ -408,7 +408,7 @@ export class DonutChart {
   }
 
   private renderLegend(chartWidth: number): void {
-    if (!this.svg) return;
+    if (!this.svg) {return;}
 
     const legendGroup = createGroup(`${this.options.classPrefix}__legend`);
     const startX = chartWidth + 20;
@@ -416,7 +416,7 @@ export class DonutChart {
     const iconSize = 12;
     const total = sum(this.segments.map((s) => s.value));
 
-    let startY = (this.options.height - this.segments.length * itemHeight) / 2;
+    const startY = (this.options.height - this.segments.length * itemHeight) / 2;
 
     this.segments.forEach((segment, index) => {
       const theme = segment.theme || this.options.theme;
@@ -517,7 +517,7 @@ export class DonutChart {
   }
 
   private showTooltip(content: string, x: number, y: number): void {
-    if (!this.tooltipElement) return;
+    if (!this.tooltipElement) {return;}
 
     this.tooltipElement.innerHTML = content;
     this.tooltipElement.style.opacity = '1';
@@ -526,7 +526,7 @@ export class DonutChart {
   }
 
   private hideTooltip(): void {
-    if (!this.tooltipElement) return;
+    if (!this.tooltipElement) {return;}
     this.tooltipElement.style.opacity = '0';
   }
 
@@ -575,8 +575,8 @@ export class DonutChart {
    * Resize chart
    */
   resize(width?: number, height?: number): void {
-    if (width) this.options.width = width;
-    if (height) this.options.height = height;
+    if (width) {this.options.width = width;}
+    if (height) {this.options.height = height;}
 
     if (this.svg) {
       this.svg.setAttribute('width', String(this.options.width));
@@ -612,7 +612,7 @@ export class DonutChart {
    * Get SVG element
    */
   getSVG(): SVGSVGElement {
-    if (!this.svg) throw new Error('Chart not initialized');
+    if (!this.svg) {throw new Error('Chart not initialized');}
     return this.svg;
   }
 
@@ -620,7 +620,7 @@ export class DonutChart {
    * Export as SVG string
    */
   toSVG(): string {
-    if (!this.svg) throw new Error('Chart not initialized');
+    if (!this.svg) {throw new Error('Chart not initialized');}
     return svgToString(this.svg);
   }
 

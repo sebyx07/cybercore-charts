@@ -5,11 +5,17 @@
  * @packageDocumentation
  */
 
+import { BarChart } from './charts/BarChart';
+import { DonutChart } from './charts/DonutChart';
+import { GaugeChart } from './charts/GaugeChart';
+import { LineChart } from './charts/LineChart';
+import { Sparkline } from './charts/Sparkline';
+
 import type {
-  LineChartOptions,
   BarChartOptions,
-  GaugeChartOptions,
   DonutChartOptions,
+  GaugeChartOptions,
+  LineChartOptions,
   SparklineOptions,
 } from './types';
 
@@ -17,18 +23,7 @@ import type {
 // Chart Classes
 // ============================================================================
 
-export { LineChart } from './charts/LineChart';
-export { BarChart } from './charts/BarChart';
-export { GaugeChart } from './charts/GaugeChart';
-export { DonutChart } from './charts/DonutChart';
-export { Sparkline } from './charts/Sparkline';
-
-// Import for factory function
-import { LineChart } from './charts/LineChart';
-import { BarChart } from './charts/BarChart';
-import { GaugeChart } from './charts/GaugeChart';
-import { DonutChart } from './charts/DonutChart';
-import { Sparkline } from './charts/Sparkline';
+export { BarChart, DonutChart, GaugeChart, LineChart, Sparkline };
 
 // ============================================================================
 // Factory Function - Easy Vanilla JS API
@@ -98,7 +93,8 @@ export function createChart<T extends ChartType>(
   const el = typeof container === 'string' ? document.querySelector(container) : container;
 
   if (!el) {
-    throw new Error(`Container not found: ${container}`);
+    const containerStr = typeof container === 'string' ? container : 'provided element';
+    throw new Error(`Container not found: ${containerStr}`);
   }
 
   switch (type) {

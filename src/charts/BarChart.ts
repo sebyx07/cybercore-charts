@@ -3,17 +3,14 @@
  * SVG bar chart with vertical/horizontal orientation and cyberpunk styling
  */
 
-import type {
-  BarChartOptions,
-  DataPoint,
-  DataSeries,
-  ChartPadding,
-  ChartTheme,
-  ChartEventType,
-  ChartEventHandler,
-  ChartEvent,
-  GlowConfig,
-} from '../types';
+import { chartColors, getThemeColor } from '../utils/colors';
+import {
+  niceExtent,
+  generateTicks,
+  createInvertedScale,
+  createLinearScale,
+  createBandScale,
+} from '../utils/math';
 import {
   createSVGRoot,
   createDefs,
@@ -28,18 +25,17 @@ import {
   svgToString,
   applyGlowFilter,
 } from '../utils/svg';
-import {
-  niceExtent,
-  generateTicks,
-  createInvertedScale,
-  createLinearScale,
-  createBandScale,
-} from '../utils/math';
-import {
-  getThemeColor,
-  generateSeriesColors,
-  chartColors,
-} from '../utils/colors';
+
+import type {
+  BarChartOptions,
+  ChartEvent,
+  ChartEventHandler,
+  ChartEventType,
+  ChartPadding,
+  ChartTheme,
+  DataPoint,
+  DataSeries,
+} from '../types';
 
 // ============================================================================
 // Default Options
@@ -112,7 +108,7 @@ export class BarChart {
     // Get container element
     if (typeof container === 'string') {
       const el = document.querySelector(container);
-      if (!el) throw new Error(`Container not found: ${container}`);
+      if (!el) {throw new Error(`Container not found: ${container}`);}
       this.container = el as HTMLElement;
     } else {
       this.container = container;
@@ -154,9 +150,9 @@ export class BarChart {
   }
 
   private normalizeData(data: DataPoint[] | DataSeries[]): DataSeries[] {
-    if (data.length === 0) return [];
+    if (data.length === 0) {return [];}
 
-    if ('data' in data[0] && Array.isArray((data[0] as DataSeries).data)) {
+    if ('data' in data[0] && Array.isArray((data[0]).data)) {
       return data as DataSeries[];
     }
 
@@ -194,7 +190,7 @@ export class BarChart {
   }
 
   private createDefinitions(): void {
-    if (!this.svg) return;
+    if (!this.svg) {return;}
 
     this.defs = createDefs();
     this.svg.appendChild(this.defs);
@@ -203,7 +199,7 @@ export class BarChart {
     const themes: ChartTheme[] = ['cyan', 'magenta', 'green', 'yellow'];
     themes.forEach((theme) => {
       const glowConfig = typeof this.options.glow === 'object' ? this.options.glow : {};
-      const filter = createGlowFilter(`glow-${theme}`, theme, glowConfig as GlowConfig);
+      const filter = createGlowFilter(`glow-${theme}`, theme, glowConfig);
       this.defs!.appendChild(filter);
     });
 
@@ -228,7 +224,7 @@ export class BarChart {
 
     if (this.options.scanlines) {
       const pattern = createScanlinesPattern('scanlines');
-      this.defs!.appendChild(pattern);
+      this.defs.appendChild(pattern);
     }
   }
 
@@ -237,7 +233,7 @@ export class BarChart {
   // ==========================================================================
 
   private render(): void {
-    if (!this.svg) return;
+    if (!this.svg) {return;}
 
     if (this.chartArea) {
       this.svg.removeChild(this.chartArea);
@@ -316,7 +312,7 @@ export class BarChart {
     categories: (string | number)[],
     isVertical: boolean
   ): void {
-    if (!this.chartArea) return;
+    if (!this.chartArea) {return;}
 
     const padding = this.options.padding as ChartPadding;
     const axisGroup = createGroup(
@@ -415,7 +411,7 @@ export class BarChart {
     bandwidth: number,
     isVertical: boolean
   ): void {
-    if (!this.chartArea) return;
+    if (!this.chartArea) {return;}
 
     const padding = this.options.padding as ChartPadding;
     const barsGroup = createGroup(
@@ -433,10 +429,10 @@ export class BarChart {
     const stackedValues: Map<string | number, number> = new Map();
 
     this.series.forEach((series, seriesIndex) => {
-      if (series.visible === false) return;
+      if (series.visible === false) {return;}
 
       const theme = series.theme || this.options.theme;
-      const color = series.color || getThemeColor(theme);
+      const _color = series.color || getThemeColor(theme);
       const seriesGroup = createGroup(`${this.options.classPrefix}__series`);
       seriesGroup.setAttribute('data-series-id', series.id);
 
@@ -559,7 +555,7 @@ export class BarChart {
   }
 
   private renderLegend(): void {
-    if (!this.svg) return;
+    if (!this.svg) {return;}
 
     const legendGroup = createGroup(`${this.options.classPrefix}__legend`);
     const itemSpacing = 100;
@@ -592,7 +588,7 @@ export class BarChart {
   }
 
   private renderScanlines(): void {
-    if (!this.svg) return;
+    if (!this.svg) {return;}
 
     const scanlineRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     scanlineRect.setAttribute('x', '0');
@@ -630,7 +626,7 @@ export class BarChart {
   }
 
   private showTooltip(content: string, x: number, y: number): void {
-    if (!this.tooltipElement) return;
+    if (!this.tooltipElement) {return;}
 
     this.tooltipElement.innerHTML = content;
     this.tooltipElement.style.opacity = '1';
@@ -641,7 +637,7 @@ export class BarChart {
   }
 
   private hideTooltip(): void {
-    if (!this.tooltipElement) return;
+    if (!this.tooltipElement) {return;}
     this.tooltipElement.style.opacity = '0';
   }
 
@@ -670,11 +666,10 @@ export class BarChart {
             <span style="width: 10px; height: 10px; background: ${color}; border-radius: 2px;"></span>
             <strong>${series.name}</strong>
           </div>
-          <div>${point.label || point.x}: <strong style="color: ${color}">${point.y}</strong></div>
+          <div>${point.label || String(point.x)}: <strong style="color: ${color}">${point.y}</strong></div>
         `;
       }
 
-      const padding = this.options.padding as ChartPadding;
       const barRect = element.getBoundingClientRect();
       const containerRect = this.container.getBoundingClientRect();
       const x = barRect.left - containerRect.left + barRect.width / 2;
@@ -723,8 +718,8 @@ export class BarChart {
   }
 
   resize(width?: number, height?: number): void {
-    if (width) this.options.width = width;
-    if (height) this.options.height = height;
+    if (width) {this.options.width = width;}
+    if (height) {this.options.height = height;}
 
     if (this.svg) {
       this.svg.setAttribute('width', String(this.options.width));
@@ -754,12 +749,12 @@ export class BarChart {
   }
 
   getSVG(): SVGSVGElement {
-    if (!this.svg) throw new Error('Chart not initialized');
+    if (!this.svg) {throw new Error('Chart not initialized');}
     return this.svg;
   }
 
   toSVG(): string {
-    if (!this.svg) throw new Error('Chart not initialized');
+    if (!this.svg) {throw new Error('Chart not initialized');}
     return svgToString(this.svg);
   }
 
