@@ -1,4 +1,4 @@
-# CYBERCORE CHARTS
+# 📊 CYBERCORE CHARTS
 
 <div align="center">
 
@@ -11,8 +11,9 @@
 
 _Neon glows, dark themes, and futuristic data visualization_
 
-[Live Demo](#) | [Documentation](#) |
-[GitHub](https://github.com/sebyx07/cybercore-charts)
+[🚀 Live Demo](https://sebyx07.github.io/cybercore-charts) |
+[📖 Documentation](https://sebyx07.github.io/cybercore-charts/#/line-charts) |
+[💻 GitHub](https://github.com/sebyx07/cybercore-charts)
 
 </div>
 
@@ -30,6 +31,44 @@ _Neon glows, dark themes, and futuristic data visualization_
 | **Tree-Shakeable**    | Import only the charts you need                |
 | **Accessible**        | Respects `prefers-reduced-motion`              |
 | **Tiny Bundle**       | <10KB minified + gzipped                       |
+
+---
+
+## Screenshots
+
+<div align="center">
+
+### Dashboard Home
+
+![Dashboard Home](assets/home.png)
+
+_Complete dashboard with chart type previews and feature overview_
+
+### Line Charts
+
+![Line Charts](assets/line-charts.png)
+
+_Smooth curves with neon glow effects in cyan, magenta, yellow, and green_
+
+### Bar Charts
+
+![Bar Charts](assets/bar-charts.png)
+
+_Vertical bars with gradient fills across all color themes_
+
+### Radial Charts
+
+![Radial Charts](assets/radial-charts.png)
+
+_Gauges for system metrics with neon glow and animated progress_
+
+### Real-time Charts
+
+![Real-time Charts](assets/realtime.png)
+
+_Live streaming charts with 100ms updates for monitoring dashboards_
+
+</div>
 
 ---
 
@@ -399,6 +438,14 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
+## 🔗 Related Projects
+
+- **[CYBERCORE CSS](https://github.com/sebyx07/cybercore-css)** - Pure CSS/SCSS
+  cyberpunk design framework. UI components, effects, and utilities with the
+  same neon aesthetic.
+
+---
+
 ## License
 
 [MIT License](LICENSE) - Use it, visualize it, share it.
@@ -407,9 +454,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 <div align="center">
 
-**Data visualization for Night City**
+**⚡ Data visualization for Night City ⚡**
 
-[Demo](#) | [Docs](#) |
-[Issues](https://github.com/sebyx07/cybercore-charts/issues)
+[🚀 Demo](https://sebyx07.github.io/cybercore-charts) |
+[📖 Docs](https://sebyx07.github.io/cybercore-charts/#/line-charts) |
+[🐛 Issues](https://github.com/sebyx07/cybercore-charts/issues)
 
 </div>
