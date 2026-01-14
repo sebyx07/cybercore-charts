@@ -1,6 +1,6 @@
 {
   "name": "cybercore-charts",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "type": "module",
   "description": "Zero-dependency cyberpunk SVG chart library with neon aesthetics and glitch effects",
   "main": "dist/cybercore-charts.js",
