@@ -3,8 +3,9 @@
  * Radial gauge with cyberpunk styling and threshold zones
  */
 
-import { chartColors, getThemeColor, hexToRGBA } from '../utils/colors';
+import { CHART_THEMES, chartColors, getThemeColor, hexToRGBA } from '../utils/colors';
 import { degToRad, lerp, clamp } from '../utils/math';
+import { ResponsiveManager } from '../utils/ResponsiveManager';
 import {
   createSVGRoot,
   createDefs,
@@ -17,17 +18,12 @@ import {
   createLinearGradient,
   describeArc,
   clearElement,
-  svgToString,
   applyGlowFilter,
 } from '../utils/svg';
 
-import type {
-  ChartEvent,
-  ChartEventHandler,
-  ChartEventType,
-  ChartTheme,
-  GaugeChartOptions,
-} from '../types';
+import { BaseChart } from './BaseChart';
+
+import type { GaugeChartOptions } from '../types';
 
 // ============================================================================
 // Default Options
@@ -72,38 +68,56 @@ const DEFAULT_OPTIONS: Required<Omit<GaugeChartOptions, 'value'>> = {
 // GaugeChart Class
 // ============================================================================
 
-export class GaugeChart {
-  private container: HTMLElement;
-  private options: Required<Omit<GaugeChartOptions, 'value'>> & { value: number };
-  private svg: SVGSVGElement | null = null;
-  private defs: SVGDefsElement | null = null;
-  private chartArea: SVGGElement | null = null;
-  private eventHandlers: Map<ChartEventType, Set<ChartEventHandler>> = new Map();
-  private resizeObserver: ResizeObserver | null = null;
+export class GaugeChart extends BaseChart<
+  Required<Omit<GaugeChartOptions, 'value'>> & { value: number },
+  number
+> {
   private currentValue: number = 0;
-  private animationFrame: number | null = null;
+  private targetValue: number = 0;
+  private responsiveManager: ResponsiveManager | null = null;
+
+  // Cached elements for optimized animation updates
+  private valueArcElement: SVGPathElement | null = null;
+  private indicatorElement: SVGCircleElement | null = null;
+  private valueTextElement: SVGTextElement | null = null;
+  private staticElementsGroup: SVGGElement | null = null;
+  private dynamicElementsGroup: SVGGElement | null = null;
 
   constructor(container: HTMLElement | string, options: GaugeChartOptions) {
-    if (typeof container === 'string') {
-      const el = document.querySelector(container);
-      if (!el) {
-        throw new Error(`Container not found: ${container}`);
-      }
-      this.container = el as HTMLElement;
-    } else {
-      this.container = container;
+    // Create merged options first, then pass to super
+    const mergedOptions = GaugeChart.mergeOptionsStatic(options);
+    super(container, mergedOptions, { width: 300, height: 300 });
+
+    // Validate and apply dimensions
+    const { width, height } = this.validateDimensions(
+      this.options.width,
+      this.options.height,
+      'GaugeChart'
+    );
+    this.options.width = width;
+    this.options.height = height;
+
+    // Validate min/max range to avoid division by zero
+    if (this.options.min === this.options.max) {
+      console.warn('GaugeChart: min and max are equal, adjusting range');
+      this.options.max = this.options.min + 100;
+    }
+    if (!isFinite(this.options.min) || !isFinite(this.options.max)) {
+      console.warn('GaugeChart: Invalid min/max values, using defaults (0-100)');
+      this.options.min = 0;
+      this.options.max = 100;
     }
 
-    this.options = this.mergeOptions(options);
     this.currentValue = this.options.min;
+    this.targetValue = this.options.value;
     this.init();
   }
 
   // ==========================================================================
-  // Initialization
+  // Static Option Merging
   // ==========================================================================
 
-  private mergeOptions(
+  private static mergeOptionsStatic(
     options: GaugeChartOptions
   ): Required<Omit<GaugeChartOptions, 'value'>> & { value: number } {
     const merged = {
@@ -123,20 +137,38 @@ export class GaugeChart {
     return merged as Required<Omit<GaugeChartOptions, 'value'>> & { value: number };
   }
 
+  private mergeOptions(
+    options: GaugeChartOptions
+  ): Required<Omit<GaugeChartOptions, 'value'>> & { value: number } {
+    return GaugeChart.mergeOptionsStatic(options);
+  }
+
+  // ==========================================================================
+  // Initialization
+  // ==========================================================================
+
   private init(): void {
     clearElement(this.container);
     this.createSVG();
     this.createDefinitions();
     this.render();
 
-    if (this.options.animate) {
-      this.animateToValue(this.options.value);
+    if (this.shouldAnimate()) {
+      this.animateToValue(this.targetValue);
     } else {
-      this.currentValue = this.options.value;
+      this.currentValue = this.targetValue;
     }
 
     if (this.options.responsive) {
-      this.setupResponsive();
+      this.responsiveManager = new ResponsiveManager(
+        this.container,
+        (width, height) => {
+          const size = Math.min(width, height);
+          this.resize(size, size);
+        },
+        true
+      );
+      this.responsiveManager.setup();
     }
   }
 
@@ -148,7 +180,7 @@ export class GaugeChart {
     this.container.appendChild(this.svg);
   }
 
-  private createDefinitions(): void {
+  protected createDefinitions(): void {
     if (!this.svg) {
       return;
     }
@@ -157,8 +189,7 @@ export class GaugeChart {
     this.svg.appendChild(this.defs);
 
     // Create glow filters for each theme
-    const themes: ChartTheme[] = ['cyan', 'magenta', 'green', 'yellow'];
-    themes.forEach((theme) => {
+    CHART_THEMES.forEach((theme) => {
       const glowConfig = typeof this.options.glow === 'object' ? this.options.glow : {};
       const filter = createGlowFilter(`glow-${theme}`, theme, glowConfig);
       this.defs!.appendChild(filter);
@@ -187,7 +218,7 @@ export class GaugeChart {
   // Rendering
   // ==========================================================================
 
-  private render(): void {
+  render(): void {
     if (!this.svg) {
       return;
     }
@@ -198,6 +229,10 @@ export class GaugeChart {
 
     this.chartArea = createGroup(`${this.options.classPrefix}__area`);
     this.svg.appendChild(this.chartArea);
+
+    // Create separate groups for static and dynamic elements
+    this.staticElementsGroup = createGroup(`${this.options.classPrefix}__static`);
+    this.dynamicElementsGroup = createGroup(`${this.options.classPrefix}__dynamic`);
 
     const centerX = this.options.width / 2;
     const centerY = this.options.height / 2;
@@ -210,6 +245,7 @@ export class GaugeChart {
     const outerRadius = Math.min(centerX, centerY) - padding;
     const innerRadius = outerRadius - this.options.thickness;
 
+    // Render static elements (only need to render once)
     // Render background track
     this.renderTrack(centerX, centerY, outerRadius);
 
@@ -218,17 +254,9 @@ export class GaugeChart {
       this.renderThresholds(centerX, centerY, outerRadius, innerRadius);
     }
 
-    // Render value arc
-    this.renderValueArc(centerX, centerY, outerRadius);
-
     // Render ticks
     if (this.options.showTicks) {
       this.renderTicks(centerX, centerY, outerRadius);
-    }
-
-    // Render center value
-    if (this.options.showValue) {
-      this.renderCenterValue(centerX, centerY);
     }
 
     // Render min/max labels
@@ -240,10 +268,91 @@ export class GaugeChart {
     if (this.options.label) {
       this.renderLabel(centerX, centerY);
     }
+
+    // Add static elements group first (background)
+    this.chartArea.appendChild(this.staticElementsGroup);
+
+    // Render dynamic elements (value arc, indicator, center value)
+    this.renderValueArc(centerX, centerY, outerRadius);
+
+    // Render center value
+    if (this.options.showValue) {
+      this.renderCenterValue(centerX, centerY);
+    }
+
+    // Add dynamic elements group on top
+    this.chartArea.appendChild(this.dynamicElementsGroup);
+  }
+
+  /**
+   * Optimized update for animation - only updates dynamic elements
+   * instead of re-rendering the entire chart
+   */
+  private updateDynamicElements(): void {
+    if (!this.svg || !this.dynamicElementsGroup) {
+      // Fall back to full render if groups aren't set up
+      this.render();
+      return;
+    }
+
+    const centerX = this.options.width / 2;
+    const centerY = this.options.height / 2;
+    const padding = Math.max(
+      this.options.padding.top!,
+      this.options.padding.right!,
+      this.options.padding.bottom!,
+      this.options.padding.left!
+    );
+    const outerRadius = Math.min(centerX, centerY) - padding;
+
+    // Calculate arc parameters
+    const range = this.options.max - this.options.min;
+    const progress = range === 0 ? 0 : clamp((this.currentValue - this.options.min) / range, 0, 1);
+    const endAngle = lerp(this.options.startAngle, this.options.endAngle, progress);
+
+    // Determine color based on thresholds
+    let arcColor = getThemeColor(this.options.theme);
+    let arcTheme = this.options.theme;
+
+    for (const threshold of this.options.thresholds) {
+      if (this.currentValue >= threshold.value) {
+        arcTheme = threshold.theme || this.options.theme;
+        arcColor = threshold.color || getThemeColor(arcTheme);
+      }
+    }
+
+    // Update value arc path
+    if (this.valueArcElement) {
+      const arcPath = describeArc(centerX, centerY, outerRadius, this.options.startAngle, endAngle);
+      this.valueArcElement.setAttribute('d', arcPath);
+      this.valueArcElement.setAttribute('stroke', arcColor);
+      if (this.options.glow) {
+        applyGlowFilter(this.valueArcElement, `glow-${arcTheme}`);
+      }
+    }
+
+    // Update indicator position
+    if (this.indicatorElement) {
+      const indicatorAngle = degToRad(endAngle - 90);
+      const indicatorX = centerX + outerRadius * Math.cos(indicatorAngle);
+      const indicatorY = centerY + outerRadius * Math.sin(indicatorAngle);
+      this.indicatorElement.setAttribute('cx', String(indicatorX));
+      this.indicatorElement.setAttribute('cy', String(indicatorY));
+      this.indicatorElement.setAttribute('fill', arcColor);
+      if (this.options.glow) {
+        applyGlowFilter(this.indicatorElement, `glow-${arcTheme}`);
+      }
+    }
+
+    // Update center value text
+    if (this.valueTextElement && this.options.showValue) {
+      this.valueTextElement.textContent = this.options.formatValue(this.currentValue);
+      this.valueTextElement.setAttribute('fill', arcColor);
+    }
   }
 
   private renderTrack(centerX: number, centerY: number, radius: number): void {
-    if (!this.chartArea) {
+    if (!this.staticElementsGroup) {
       return;
     }
 
@@ -262,7 +371,7 @@ export class GaugeChart {
       className: `${this.options.classPrefix}__track`,
     });
 
-    this.chartArea.appendChild(track);
+    this.staticElementsGroup.appendChild(track);
   }
 
   private renderThresholds(
@@ -271,7 +380,7 @@ export class GaugeChart {
     outerRadius: number,
     _innerRadius: number
   ): void {
-    if (!this.chartArea) {
+    if (!this.staticElementsGroup) {
       return;
     }
 
@@ -280,8 +389,11 @@ export class GaugeChart {
 
     let prevAngle = this.options.startAngle;
 
+    // Guard against division by zero when min === max
+    const range = this.options.max - this.options.min;
+
     sortedThresholds.forEach((threshold, index) => {
-      const progress = (threshold.value - this.options.min) / (this.options.max - this.options.min);
+      const progress = range === 0 ? 0 : (threshold.value - this.options.min) / range;
       const angle = lerp(this.options.startAngle, this.options.endAngle, progress);
 
       const thresholdTheme = threshold.theme || this.options.theme;
@@ -306,19 +418,17 @@ export class GaugeChart {
       prevAngle = angle;
     });
 
-    this.chartArea.appendChild(thresholdGroup);
+    this.staticElementsGroup.appendChild(thresholdGroup);
   }
 
   private renderValueArc(centerX: number, centerY: number, radius: number): void {
-    if (!this.chartArea) {
+    if (!this.dynamicElementsGroup) {
       return;
     }
 
-    const progress = clamp(
-      (this.currentValue - this.options.min) / (this.options.max - this.options.min),
-      0,
-      1
-    );
+    // Guard against division by zero when min === max
+    const range = this.options.max - this.options.min;
+    const progress = range === 0 ? 0 : clamp((this.currentValue - this.options.min) / range, 0, 1);
     const endAngle = lerp(this.options.startAngle, this.options.endAngle, progress);
 
     // Determine color based on thresholds
@@ -345,7 +455,9 @@ export class GaugeChart {
       applyGlowFilter(arc, `glow-${arcTheme}`);
     }
 
-    this.chartArea.appendChild(arc);
+    // Store reference for optimized updates
+    this.valueArcElement = arc;
+    this.dynamicElementsGroup.appendChild(arc);
 
     // Add needle/indicator at the end
     const indicatorAngle = degToRad(endAngle - 90);
@@ -361,11 +473,13 @@ export class GaugeChart {
       applyGlowFilter(indicator, `glow-${arcTheme}`);
     }
 
-    this.chartArea.appendChild(indicator);
+    // Store reference for optimized updates
+    this.indicatorElement = indicator;
+    this.dynamicElementsGroup.appendChild(indicator);
   }
 
   private renderTicks(centerX: number, centerY: number, outerRadius: number): void {
-    if (!this.chartArea) {
+    if (!this.staticElementsGroup) {
       return;
     }
 
@@ -408,11 +522,11 @@ export class GaugeChart {
       }
     }
 
-    this.chartArea.appendChild(tickGroup);
+    this.staticElementsGroup.appendChild(tickGroup);
   }
 
   private renderCenterValue(centerX: number, centerY: number): void {
-    if (!this.chartArea) {
+    if (!this.dynamicElementsGroup) {
       return;
     }
 
@@ -431,11 +545,13 @@ export class GaugeChart {
       className: `${this.options.classPrefix}__value-text`,
     });
 
-    this.chartArea.appendChild(valueText);
+    // Store reference for optimized updates
+    this.valueTextElement = valueText;
+    this.dynamicElementsGroup.appendChild(valueText);
   }
 
   private renderMinMaxLabels(centerX: number, centerY: number, radius: number): void {
-    if (!this.chartArea) {
+    if (!this.staticElementsGroup) {
       return;
     }
 
@@ -451,7 +567,7 @@ export class GaugeChart {
       fontSize: 12,
       className: `${this.options.classPrefix}__min-label`,
     });
-    this.chartArea.appendChild(minLabel);
+    this.staticElementsGroup.appendChild(minLabel);
 
     // Max label
     const maxAngle = degToRad(this.options.endAngle - 90);
@@ -463,11 +579,11 @@ export class GaugeChart {
       fontSize: 12,
       className: `${this.options.classPrefix}__max-label`,
     });
-    this.chartArea.appendChild(maxLabel);
+    this.staticElementsGroup.appendChild(maxLabel);
   }
 
   private renderLabel(centerX: number, centerY: number): void {
-    if (!this.chartArea) {
+    if (!this.staticElementsGroup) {
       return;
     }
 
@@ -477,7 +593,7 @@ export class GaugeChart {
       className: `${this.options.classPrefix}__label`,
     });
 
-    this.chartArea.appendChild(label);
+    this.staticElementsGroup.appendChild(label);
   }
 
   // ==========================================================================
@@ -501,7 +617,8 @@ export class GaugeChart {
       const easedProgress = this.easeOutCubic(progress);
       this.currentValue = lerp(startValue, targetValue, easedProgress);
 
-      this.render();
+      // Use optimized update instead of full render
+      this.updateDynamicElements();
 
       if (progress < 1) {
         this.animationFrame = requestAnimationFrame(animate);
@@ -516,21 +633,6 @@ export class GaugeChart {
   }
 
   // ==========================================================================
-  // Responsive
-  // ==========================================================================
-
-  private setupResponsive(): void {
-    this.resizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (entry) {
-        const size = Math.min(entry.contentRect.width, entry.contentRect.height);
-        this.resize(size, size);
-      }
-    });
-    this.resizeObserver.observe(this.container);
-  }
-
-  // ==========================================================================
   // Public API
   // ==========================================================================
 
@@ -539,8 +641,9 @@ export class GaugeChart {
    */
   update(value: number): void {
     this.options.value = value;
+    this.targetValue = value;
 
-    if (this.options.animate) {
+    if (this.shouldAnimate()) {
       this.animateToValue(value);
     } else {
       this.currentValue = value;
@@ -560,7 +663,8 @@ export class GaugeChart {
     }
 
     if (options.value !== undefined) {
-      if (this.options.animate) {
+      this.targetValue = options.value;
+      if (this.shouldAnimate()) {
         this.animateToValue(options.value);
       } else {
         this.currentValue = options.value;
@@ -582,11 +686,7 @@ export class GaugeChart {
       this.options.height = height;
     }
 
-    if (this.svg) {
-      this.svg.setAttribute('width', String(this.options.width));
-      this.svg.setAttribute('height', String(this.options.height));
-      this.svg.setAttribute('viewBox', `0 0 ${this.options.width} ${this.options.height}`);
-    }
+    this.updateSVGDimensions(this.options.width, this.options.height);
 
     this.render();
     this.emit('resize', {
@@ -599,41 +699,28 @@ export class GaugeChart {
   /**
    * Destroy chart and clean up
    */
-  destroy(): void {
+  override destroy(): void {
+    // Cancel gauge-specific animation frame first
     if (this.animationFrame) {
       cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
     }
 
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
+    // Clean up ResponsiveManager
+    if (this.responsiveManager) {
+      this.responsiveManager.destroy();
+      this.responsiveManager = null;
     }
 
-    clearElement(this.container);
+    // Clear cached element references
+    this.valueArcElement = null;
+    this.indicatorElement = null;
+    this.valueTextElement = null;
+    this.staticElementsGroup = null;
+    this.dynamicElementsGroup = null;
 
-    this.svg = null;
-    this.defs = null;
-    this.chartArea = null;
-    this.eventHandlers.clear();
-  }
-
-  /**
-   * Get SVG element
-   */
-  getSVG(): SVGSVGElement {
-    if (!this.svg) {
-      throw new Error('Chart not initialized');
-    }
-    return this.svg;
-  }
-
-  /**
-   * Export as SVG string
-   */
-  toSVG(): string {
-    if (!this.svg) {
-      throw new Error('Chart not initialized');
-    }
-    return svgToString(this.svg);
+    // Call parent destroy for common cleanup
+    super.destroy();
   }
 
   /**
@@ -641,31 +728,6 @@ export class GaugeChart {
    */
   getValue(): number {
     return this.currentValue;
-  }
-
-  /**
-   * Add event listener
-   */
-  on<T = unknown>(event: ChartEventType, handler: ChartEventHandler<T>): void {
-    if (!this.eventHandlers.has(event)) {
-      this.eventHandlers.set(event, new Set());
-    }
-    this.eventHandlers.get(event)!.add(handler as ChartEventHandler);
-  }
-
-  /**
-   * Remove event listener
-   */
-  off(event: ChartEventType, handler?: ChartEventHandler): void {
-    if (!handler) {
-      this.eventHandlers.delete(event);
-    } else {
-      this.eventHandlers.get(event)?.delete(handler);
-    }
-  }
-
-  private emit<T = unknown>(event: ChartEventType, data: ChartEvent<T>): void {
-    this.eventHandlers.get(event)?.forEach((handler) => handler(data as ChartEvent));
   }
 }
 

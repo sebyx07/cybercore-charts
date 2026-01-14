@@ -213,6 +213,19 @@ export interface LineChartOptions extends BaseChartOptions {
   legend?: LegendConfig;
   /** Connect null/missing values */
   connectNulls?: boolean;
+  /**
+   * Maximum number of points to render per series (default: 1000).
+   * If data exceeds this limit, points will be reduced using
+   * Douglas-Peucker algorithm to preserve the visual shape.
+   * Set to 0 or Infinity to disable point reduction.
+   */
+  maxPoints?: number;
+  /**
+   * Tolerance for Douglas-Peucker simplification (default: 1).
+   * Higher values result in more aggressive simplification.
+   * Only used when point count exceeds maxPoints.
+   */
+  simplifyTolerance?: number;
 }
 
 // ============================================================================

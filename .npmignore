@@ -1,0 +1,30 @@
+# Development files
+demo/
+tests/
+.vscode/
+.idea/
+
+# Config files
+*.config.ts
+*.config.js
+.prettierrc
+.eslintrc.cjs
+playwright.config.ts
+vitest.config.ts
+tsconfig.node.json
+
+# Test files
+*.test.ts
+*.spec.ts
+
+# Source maps (optional, keep small)
+# *.map
+
+# Git
+.git/
+.gitignore
+.husky/
+
+# Misc
+CLAUDE.md
+.github/

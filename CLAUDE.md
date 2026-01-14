@@ -45,39 +45,79 @@ SVGElement objects that can be inserted into any DOM context.
 
 **Structure:**
 
-- `charts/` - Chart type implementations
+- `charts/` - Chart type implementations (extend BaseChart)
 - `utils/` - Shared utilities (scales, axes, colors, animations)
 - `styles/` - Default cyberpunk theme definitions
 - `types.ts` - TypeScript type definitions
 - `index.ts` - Main entry point with all exports
 
+### SOLID Architecture
+
+The library follows SOLID principles for maintainability:
+
+#### Single Responsibility Principle (SRP)
+
+Each class/module has one responsibility:
+
+- **`BaseChart`** - Common chart lifecycle (container, SVG, events, destroy)
+- **`ChartEventEmitter`** - Event registration and emission only
+- **`TooltipManager`** - Tooltip creation, positioning, display
+- **`ResponsiveManager`** - ResizeObserver setup and cleanup
+- **Chart classes** - Chart-specific rendering logic only
+
+#### Open/Closed Principle (OCP)
+
+- Charts extend `BaseChart` without modifying it
+- New chart types can be added by extending `BaseChart`
+- Utilities are composable and reusable
+
+#### Dependency Inversion (DIP)
+
+- Charts depend on abstract `BaseChart`, not concrete implementations
+- Managers are injected as dependencies, not hardcoded
+
 ### Chart Types (`src/charts/`)
 
-Each chart is a standalone module:
+All charts extend `BaseChart<TOptions, TData>`:
 
-- `line.ts` - Line charts with glow effects
-- `bar.ts` - Bar charts (vertical/horizontal)
-- `area.ts` - Area charts with gradient fills
-- `pie.ts` - Pie/donut charts with neon segments
-- `scatter.ts` - Scatter plots with pulse animations
-- `gauge.ts` - Gauge/meter displays
-- `radar.ts` - Radar/spider charts
-- `sparkline.ts` - Inline mini charts
+```typescript
+// Base class provides shared functionality
+abstract class BaseChart<TOptions, TData> {
+  // Container resolution, dimension validation
+  // Event handling (on/off/emit)
+  // SVG management (getSVG/toSVG)
+  // Animation checks (prefers-reduced-motion)
+  // Responsive setup, tooltip basics, destroy cleanup
+}
+```
+
+**Implementations:**
+
+- `BaseChart.ts` - Abstract base class with shared functionality
+- `LineChart.ts` - Line/area charts with glow effects
+- `BarChart.ts` - Bar charts (vertical/horizontal, grouped/stacked)
+- `DonutChart.ts` - Pie/donut charts with neon segments
+- `GaugeChart.ts` - Gauge/meter displays with thresholds
+- `Sparkline.ts` - Inline mini charts
 
 ### Utilities (`src/utils/`)
 
-- `scales.ts` - Linear, logarithmic, time scales
-- `axes.ts` - X/Y axis rendering with grid lines
-- `colors.ts` - Cyberpunk color palette and gradients
-- `animations.ts` - SVG animation helpers (SMIL + CSS)
-- `tooltip.ts` - Tooltip generation utilities
-- `responsive.ts` - Viewport/container size handling
+**Core utilities:**
+
+- `math.ts` - Scales, interpolation, path generation
+- `svg.ts` - SVG element creation, filters, gradients
+- `colors.ts` - Cyberpunk palette, color manipulation
+
+**SRP Manager classes:**
+
+- `EventEmitter.ts` - `ChartEventEmitter` for event handling
+- `TooltipManager.ts` - Tooltip lifecycle and positioning
+- `ResponsiveManager.ts` - ResizeObserver with fallback
 
 ### Styles (`src/styles/`)
 
-- `theme.ts` - Default theme configuration
-- `variables.ts` - Color and spacing tokens
-- `effects.ts` - Glow, scanline, and neon effect definitions
+- `cyber-charts.scss` - Cyberpunk theme with CSS variables
+- Includes `prefers-reduced-motion` media query support
 
 ### Demo Site (`demo/`)
 
@@ -248,6 +288,56 @@ git push origin vX.X.X
 ```
 
 GitHub Actions will automatically publish to npm when a new tag is pushed.
+
+## Extending BaseChart
+
+To create a new chart type, extend `BaseChart`:
+
+```typescript
+import { BaseChart } from 'cybercore-charts';
+import type { BaseChartOptions } from 'cybercore-charts';
+
+interface MyChartOptions extends BaseChartOptions {
+  data: MyDataType[];
+  // chart-specific options
+}
+
+export class MyChart extends BaseChart<MyChartOptions, MyDataType[]> {
+  constructor(container: HTMLElement | string, options: MyChartOptions) {
+    // Validate and merge options
+    const mergedOptions = { ...defaults, ...options };
+    super(mergedOptions, { width: 400, height: 300 });
+
+    // Resolve container using inherited method
+    this.container = this.resolveContainer(container);
+
+    this.init();
+  }
+
+  // Required: implement abstract methods
+  render(): void {
+    /* render SVG */
+  }
+  update(data: MyDataType[]): void {
+    /* update with new data */
+  }
+  resize(width?: number, height?: number): void {
+    /* handle resize */
+  }
+  protected createDefinitions(): void {
+    /* create SVG defs */
+  }
+}
+```
+
+**Inherited from BaseChart:**
+
+- `resolveContainer()` - Handle string selectors or HTMLElement
+- `validateDimensions()` - Validate width/height with defaults
+- `shouldAnimate()` - Check animate option + prefers-reduced-motion
+- `on()/off()` - Event registration
+- `getSVG()/toSVG()` - SVG access and export
+- `destroy()` - Cleanup (call `super.destroy()` after your cleanup)
 
 ## Key Constraints
 

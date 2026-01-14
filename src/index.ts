@@ -6,11 +6,13 @@
  */
 
 import { BarChart } from './charts/BarChart';
+import { BaseChart } from './charts/BaseChart';
 import { DonutChart } from './charts/DonutChart';
 import { GaugeChart } from './charts/GaugeChart';
 import { LineChart } from './charts/LineChart';
 import { Sparkline } from './charts/Sparkline';
 
+import type { DefaultDimensions } from './charts/BaseChart';
 import type {
   BarChartOptions,
   DonutChartOptions,
@@ -23,6 +25,11 @@ import type {
 // Chart Classes
 // ============================================================================
 
+// Base class for creating custom charts
+export { BaseChart };
+export type { DefaultDimensions };
+
+// Chart implementations
 export { BarChart, DonutChart, GaugeChart, LineChart, Sparkline };
 
 // ============================================================================
@@ -251,10 +258,28 @@ export {
   createMask,
   applyThemeColor,
   applyGlowFilter,
+  escapeHtml,
 } from './utils/svg';
+
+// Tooltip utilities
+export { TooltipManager } from './utils/TooltipManager';
+export type { TooltipOptions } from './utils/TooltipManager';
+
+// Responsive utilities
+export { ResponsiveManager } from './utils/ResponsiveManager';
+export type { ResizeCallback } from './utils/ResponsiveManager';
+
+// Event utilities
+export { ChartEventEmitter } from './utils/EventEmitter';
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+export { LAYOUT } from './constants';
 
 // ============================================================================
 // Version
 // ============================================================================
 
-export const VERSION = '0.1.0';
+export const VERSION = '0.1.1';

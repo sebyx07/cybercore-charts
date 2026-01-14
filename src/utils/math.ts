@@ -100,12 +100,31 @@ export function getXExtent(data: DataPoint[]): [number, number] {
  * Calculate nice axis bounds (rounds to nice numbers)
  */
 export function niceExtent(min: number, max: number, tickCount: number = 5): [number, number] {
+  // Handle non-finite values
+  if (!isFinite(min) || !isFinite(max)) {
+    console.warn('niceExtent: Invalid min/max values provided, using defaults [0, 1]');
+    return [0, 1];
+  }
+
   if (min === max) {
-    return min === 0 ? [0, 1] : [min * 0.9, max * 1.1];
+    // Handle case where min and max are the same
+    if (min === 0) {
+      return [0, 1];
+    }
+    // Expand range by 10% on each side
+    const padding = Math.abs(min) * 0.1 || 1;
+    return [min - padding, max + padding];
   }
 
   const range = max - min;
   const roughStep = range / tickCount;
+
+  // Guard against log10(0) when roughStep is 0 or very small
+  if (roughStep <= 0 || !isFinite(roughStep)) {
+    console.warn('niceExtent: Invalid step calculated, using original bounds');
+    return [min, max];
+  }
+
   const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
   const normalizedStep = roughStep / magnitude;
 
@@ -181,6 +200,16 @@ export function createBandScale(
   padding: number = 0.1
 ): { scale: (value: string | number) => number; bandwidth: number } {
   const count = categories.length;
+
+  // Guard against empty categories array (division by zero)
+  if (count === 0) {
+    console.warn('createBandScale: Empty categories array provided');
+    return {
+      scale: () => rangeMin,
+      bandwidth: 0,
+    };
+  }
+
   const totalRange = rangeMax - rangeMin;
   const paddingTotal = totalRange * padding;
   const bandwidth = (totalRange - paddingTotal) / count;
@@ -304,9 +333,7 @@ export function calculateControlPoints(
   const d3 = distance(p2, p3);
 
   const fa = (tension * d1) / (d1 + d2);
-  const _fb = (tension * d2) / (d1 + d2);
   const fc = (tension * d2) / (d2 + d3);
-  const _fd = (tension * d3) / (d2 + d3);
 
   return {
     cp1: {
@@ -430,4 +457,118 @@ export function normalize(values: number[]): number[] {
     return values.map(() => 0.5);
   }
   return values.map((v) => (v - min) / (max - min));
+}
+
+// ============================================================================
+// Path Simplification (Douglas-Peucker Algorithm)
+// ============================================================================
+
+/**
+ * Calculate the perpendicular distance from a point to a line segment
+ * @param point - The point to measure distance from
+ * @param lineStart - Start point of the line segment
+ * @param lineEnd - End point of the line segment
+ * @returns The perpendicular distance
+ */
+function perpendicularDistance(point: Point, lineStart: Point, lineEnd: Point): number {
+  const dx = lineEnd.x - lineStart.x;
+  const dy = lineEnd.y - lineStart.y;
+
+  // Handle case where lineStart and lineEnd are the same point
+  const lineLengthSquared = dx * dx + dy * dy;
+  if (lineLengthSquared === 0) {
+    return distance(point, lineStart);
+  }
+
+  // Calculate perpendicular distance using cross product formula
+  const numerator = Math.abs(
+    dy * point.x - dx * point.y + lineEnd.x * lineStart.y - lineEnd.y * lineStart.x
+  );
+  const denominator = Math.sqrt(lineLengthSquared);
+
+  return numerator / denominator;
+}
+
+/**
+ * Reduce data points using Ramer-Douglas-Peucker algorithm
+ * for better performance with large datasets.
+ *
+ * This algorithm simplifies a curve by removing points that are within
+ * a specified tolerance of the simplified curve, while preserving the
+ * overall shape.
+ *
+ * @param points - Array of points to simplify
+ * @param tolerance - Maximum allowed perpendicular distance from the simplified line.
+ *                    Higher values result in more simplification.
+ *                    Recommended: 0.5-2 for pixel coordinates.
+ * @returns Simplified array of points
+ *
+ * @example
+ * ```typescript
+ * const simplified = simplifyPath(points, 1.0);
+ * // Original: 10,000 points -> Simplified: ~500 points (depending on data)
+ * ```
+ */
+export function simplifyPath(points: Point[], tolerance: number): Point[] {
+  // Handle edge cases
+  if (points.length <= 2) {
+    return [...points];
+  }
+
+  if (tolerance <= 0) {
+    return [...points];
+  }
+
+  // Find the point with the maximum distance from the line between first and last
+  let maxDistance = 0;
+  let maxIndex = 0;
+
+  const firstPoint = points[0];
+  const lastPoint = points[points.length - 1];
+
+  for (let i = 1; i < points.length - 1; i++) {
+    const dist = perpendicularDistance(points[i], firstPoint, lastPoint);
+    if (dist > maxDistance) {
+      maxDistance = dist;
+      maxIndex = i;
+    }
+  }
+
+  // If the maximum distance is greater than the tolerance, recursively simplify
+  if (maxDistance > tolerance) {
+    // Recursively simplify the two sub-arrays
+    const leftPoints = simplifyPath(points.slice(0, maxIndex + 1), tolerance);
+    const rightPoints = simplifyPath(points.slice(maxIndex), tolerance);
+
+    // Concatenate results (remove duplicate point at maxIndex)
+    return [...leftPoints.slice(0, -1), ...rightPoints];
+  }
+
+  // All points are within tolerance, return just the endpoints
+  return [firstPoint, lastPoint];
+}
+
+/**
+ * Downsample data points by selecting evenly spaced points.
+ * A simpler alternative to Douglas-Peucker when you just need
+ * to reduce point count without shape preservation.
+ *
+ * @param points - Array of points to downsample
+ * @param maxPoints - Maximum number of points to return
+ * @returns Downsampled array of points
+ */
+export function downsamplePoints(points: Point[], maxPoints: number): Point[] {
+  if (points.length <= maxPoints || maxPoints < 2) {
+    return [...points];
+  }
+
+  const result: Point[] = [];
+  const step = (points.length - 1) / (maxPoints - 1);
+
+  for (let i = 0; i < maxPoints; i++) {
+    const index = Math.round(i * step);
+    result.push(points[index]);
+  }
+
+  return result;
 }

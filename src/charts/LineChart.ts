@@ -3,7 +3,8 @@
  * SVG line chart with cyberpunk styling, area fills, and glow effects
  */
 
-import { chartColors, getThemeColor } from '../utils/colors';
+import { LAYOUT } from '../constants';
+import { CHART_THEMES, chartColors, getThemeColor } from '../utils/colors';
 import {
   createBandScale,
   createInvertedScale,
@@ -12,7 +13,9 @@ import {
   niceExtent,
   smoothPath,
   stepPath,
+  simplifyPath,
 } from '../utils/math';
+import { ResponsiveManager } from '../utils/ResponsiveManager';
 import {
   createSVGRoot,
   createDefs,
@@ -27,21 +30,13 @@ import {
   createScanlinesPattern,
   pointsToPath,
   clearElement,
-  svgToString,
   applyGlowFilter,
 } from '../utils/svg';
+import { TooltipManager } from '../utils/TooltipManager';
 
-import type {
-  ChartEvent,
-  ChartEventHandler,
-  ChartEventType,
-  ChartPadding,
-  ChartTheme,
-  DataPoint,
-  DataSeries,
-  LineChartOptions,
-  Point,
-} from '../types';
+import { BaseChart } from './BaseChart';
+
+import type { ChartPadding, DataPoint, DataSeries, LineChartOptions, Point } from '../types';
 
 // ============================================================================
 // Default Options
@@ -93,38 +88,33 @@ const DEFAULT_OPTIONS: Required<Omit<LineChartOptions, 'data'>> = {
     align: 'end',
   },
   connectNulls: false,
+  maxPoints: 1000,
+  simplifyTolerance: 1,
 };
 
 // ============================================================================
 // LineChart Class
 // ============================================================================
 
-export class LineChart {
-  private container: HTMLElement;
-  private options: Required<Omit<LineChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] };
-  private svg: SVGSVGElement | null = null;
-  private defs: SVGDefsElement | null = null;
-  private chartArea: SVGGElement | null = null;
+export class LineChart extends BaseChart<
+  Required<Omit<LineChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] },
+  DataPoint[] | DataSeries[]
+> {
   private series: DataSeries[] = [];
-  private eventHandlers: Map<ChartEventType, Set<ChartEventHandler>> = new Map();
-  private resizeObserver: ResizeObserver | null = null;
-  private animationFrame: number | null = null;
-  private tooltipElement: HTMLDivElement | null = null;
+  private tooltipManager: TooltipManager | null = null;
+  private responsiveManager: ResponsiveManager | null = null;
 
   constructor(container: HTMLElement | string, options: LineChartOptions) {
-    // Get container element
-    if (typeof container === 'string') {
-      const el = document.querySelector(container);
-      if (!el) {
-        throw new Error(`Container not found: ${container}`);
-      }
-      this.container = el as HTMLElement;
-    } else {
-      this.container = container;
-    }
+    // Merge options with defaults before calling super
+    const mergedOptions = LineChart.mergeOptionsStatic(options);
 
-    // Merge options with defaults
-    this.options = this.mergeOptions(options);
+    // Call parent constructor with merged options
+    super(container, mergedOptions, { width: 400, height: 300 });
+
+    // Validate and fix dimensions using BaseChart's method
+    const dims = this.validateDimensions(this.options.width, this.options.height, 'LineChart');
+    this.options.width = dims.width;
+    this.options.height = dims.height;
 
     // Normalize data to series format
     this.series = this.normalizeData(this.options.data);
@@ -134,10 +124,10 @@ export class LineChart {
   }
 
   // ==========================================================================
-  // Initialization
+  // Static Option Merging
   // ==========================================================================
 
-  private mergeOptions(
+  private static mergeOptionsStatic(
     options: LineChartOptions
   ): Required<Omit<LineChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] } {
     const merged = {
@@ -162,6 +152,20 @@ export class LineChart {
       data: DataPoint[] | DataSeries[];
     };
   }
+
+  // ==========================================================================
+  // Instance Option Merging (for setOptions)
+  // ==========================================================================
+
+  private mergeOptions(
+    options: LineChartOptions
+  ): Required<Omit<LineChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] } {
+    return LineChart.mergeOptionsStatic(options);
+  }
+
+  // ==========================================================================
+  // Initialization
+  // ==========================================================================
 
   private normalizeData(data: DataPoint[] | DataSeries[]): DataSeries[] {
     if (data.length === 0) {
@@ -193,14 +197,20 @@ export class LineChart {
     this.createDefinitions();
     this.render();
 
-    // Set up responsive behavior
+    // Set up responsive behavior using ResponsiveManager
     if (this.options.responsive) {
-      this.setupResponsive();
+      this.responsiveManager = new ResponsiveManager(
+        this.container,
+        (w, h) => this.resize(w, h),
+        true
+      );
+      this.responsiveManager.setup();
     }
 
-    // Create tooltip element
+    // Create tooltip using TooltipManager
     if (this.options.tooltip.enabled) {
-      this.createTooltip();
+      this.tooltipManager = new TooltipManager(this.container, this.options.tooltip);
+      this.tooltipManager.create();
     }
   }
 
@@ -213,7 +223,11 @@ export class LineChart {
     this.container.appendChild(this.svg);
   }
 
-  private createDefinitions(): void {
+  /**
+   * Creates SVG definitions (filters, gradients, patterns).
+   * Implements the abstract method from BaseChart.
+   */
+  protected createDefinitions(): void {
     if (!this.svg) {
       return;
     }
@@ -222,8 +236,7 @@ export class LineChart {
     this.svg.appendChild(this.defs);
 
     // Create glow filter for each theme
-    const themes: ChartTheme[] = ['cyan', 'magenta', 'green', 'yellow'];
-    themes.forEach((theme) => {
+    CHART_THEMES.forEach((theme) => {
       const glowConfig = typeof this.options.glow === 'object' ? this.options.glow : {};
       const filter = createGlowFilter(`glow-${theme}`, theme, glowConfig);
       this.defs!.appendChild(filter);
@@ -251,7 +264,11 @@ export class LineChart {
   // Rendering
   // ==========================================================================
 
-  private render(): void {
+  /**
+   * Renders the chart.
+   * Implements the abstract method from BaseChart.
+   */
+  render(): void {
     if (!this.svg) {
       return;
     }
@@ -298,17 +315,31 @@ export class LineChart {
 
     this.series.forEach((series) => {
       series.data.forEach((point) => {
-        allYValues.push(point.y);
+        // Filter out invalid Y values (NaN, undefined, null, or non-finite)
+        if (typeof point.y === 'number' && isFinite(point.y)) {
+          allYValues.push(point.y);
+        }
         if (!allXValues.includes(point.x as string | number)) {
           allXValues.push(point.x as string | number);
         }
       });
     });
 
+    // Handle empty data case
+    if (allYValues.length === 0) {
+      console.warn('LineChart: No valid Y data points found, using default scale [0, 100]');
+    }
+
     // Calculate Y extent with nice bounds
+    // Use safe defaults when array is empty to avoid Infinity/-Infinity
+    const yMinValue =
+      allYValues.length > 0 ? Math.min(0, ...allYValues) : (this.options.yAxis.min ?? 0);
+    const yMaxValue =
+      allYValues.length > 0 ? Math.max(...allYValues) : (this.options.yAxis.max ?? 100);
+
     const [yMin, yMax] = niceExtent(
-      this.options.yAxis.min ?? Math.min(0, ...allYValues),
-      this.options.yAxis.max ?? Math.max(...allYValues),
+      this.options.yAxis.min ?? yMinValue,
+      this.options.yAxis.max ?? yMaxValue,
       this.options.yAxis.ticks
     );
 
@@ -317,6 +348,13 @@ export class LineChart {
     // Calculate X scale - categorical or numeric
     let xScale: (value: string | number) => number;
     const xLabels: (string | number)[] = allXValues;
+
+    // Handle empty X values
+    if (allXValues.length === 0) {
+      console.warn('LineChart: No X data points found');
+      xScale = () => 0;
+      return { xScale, yScale, xLabels, yMin, yMax };
+    }
 
     const firstX = allXValues[0];
     if (typeof firstX === 'number') {
@@ -471,10 +509,16 @@ export class LineChart {
       const color = series.color || getThemeColor(theme);
 
       // Convert data points to coordinates
-      const points: Point[] = series.data.map((point) => ({
+      let points: Point[] = series.data.map((point) => ({
         x: xScale(point.x as string | number),
         y: yScale(point.y),
       }));
+
+      // Apply point reduction for large datasets to improve performance
+      const maxPoints = this.options.maxPoints;
+      if (maxPoints > 0 && maxPoints !== Infinity && points.length > maxPoints) {
+        points = simplifyPath(points, this.options.simplifyTolerance);
+      }
 
       // Render area fill
       if (this.options.showArea && points.length > 0) {
@@ -518,7 +562,7 @@ export class LineChart {
         }
 
         // Add animation
-        if (this.options.animate) {
+        if (this.shouldAnimate()) {
           this.animatePath(linePath);
         }
 
@@ -553,7 +597,7 @@ export class LineChart {
           });
 
           // Add animation delay for staggered effect
-          if (this.options.animate) {
+          if (this.shouldAnimate()) {
             const delay =
               this.options.animation.delay! + pointIndex * this.options.animation.stagger!;
             circle.style.opacity = '0';
@@ -584,11 +628,10 @@ export class LineChart {
     }
 
     const legendGroup = createGroup(`${this.options.classPrefix}__legend`);
-    const itemSpacing = 100;
-    const iconSize = 12;
+    const { ITEM_SPACING, ICON_SIZE, TOP_MARGIN, RIGHT_MARGIN, ICON_TEXT_GAP } = LAYOUT.LEGEND;
 
-    let startX = this.options.width - 20;
-    const y = 15;
+    let startX = this.options.width - RIGHT_MARGIN;
+    const y = TOP_MARGIN;
 
     // Render in reverse order for right alignment
     [...this.series].reverse().forEach((series) => {
@@ -597,9 +640,9 @@ export class LineChart {
 
       // Legend icon (small line)
       const icon = createLine(
-        startX - itemSpacing + 20,
+        startX - ITEM_SPACING + RIGHT_MARGIN,
         y,
-        startX - itemSpacing + 20 + iconSize,
+        startX - ITEM_SPACING + RIGHT_MARGIN + ICON_SIZE,
         y,
         {
           stroke: color,
@@ -609,14 +652,19 @@ export class LineChart {
       legendGroup.appendChild(icon);
 
       // Legend text
-      const text = createText(startX - itemSpacing + 20 + iconSize + 8, y, series.name, {
-        fill: chartColors.text,
-        fontSize: 11,
-        textAnchor: 'start',
-      });
+      const text = createText(
+        startX - ITEM_SPACING + RIGHT_MARGIN + ICON_SIZE + ICON_TEXT_GAP,
+        y,
+        series.name,
+        {
+          fill: chartColors.text,
+          fontSize: 11,
+          textAnchor: 'start',
+        }
+      );
       legendGroup.appendChild(text);
 
-      startX -= itemSpacing;
+      startX -= ITEM_SPACING;
     });
 
     this.svg.appendChild(legendGroup);
@@ -651,49 +699,8 @@ export class LineChart {
   }
 
   // ==========================================================================
-  // Tooltip
+  // Tooltip Handling
   // ==========================================================================
-
-  private createTooltip(): void {
-    this.tooltipElement = document.createElement('div');
-    this.tooltipElement.className = `${this.options.classPrefix}__tooltip`;
-    this.tooltipElement.style.cssText = `
-      position: absolute;
-      pointer-events: none;
-      background: ${chartColors.tooltipBg};
-      border: 1px solid ${chartColors.tooltipBorder};
-      border-radius: 4px;
-      padding: 8px 12px;
-      font-size: 12px;
-      color: ${chartColors.text};
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      z-index: 1000;
-      opacity: 0;
-      transition: opacity 0.15s;
-    `;
-    document.body.appendChild(this.tooltipElement);
-  }
-
-  private showTooltip(content: string, x: number, y: number): void {
-    if (!this.tooltipElement) {
-      return;
-    }
-
-    this.tooltipElement.innerHTML = content;
-    this.tooltipElement.style.opacity = '1';
-
-    // Position tooltip
-    const rect = this.container.getBoundingClientRect();
-    this.tooltipElement.style.left = `${rect.left + x + 15}px`;
-    this.tooltipElement.style.top = `${rect.top + y - 10}px`;
-  }
-
-  private hideTooltip(): void {
-    if (!this.tooltipElement) {
-      return;
-    }
-    this.tooltipElement.style.opacity = '0';
-  }
 
   private handlePointHover(
     point: DataPoint,
@@ -709,43 +716,43 @@ export class LineChart {
       originalEvent: event,
     });
 
-    // Show tooltip
-    if (this.options.tooltip.enabled) {
-      let content: string;
+    // Show tooltip using TooltipManager
+    if (this.tooltipManager && this.options.tooltip.enabled) {
+      let content: string | HTMLElement;
       if (this.options.tooltip.formatter) {
+        // Custom formatters return strings - treat as plain text for safety
         content = this.options.tooltip.formatter(point, series);
       } else {
         const theme = series.theme || this.options.theme;
         const color = series.color || getThemeColor(theme);
-        content = `
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-            <span style="width: 10px; height: 10px; background: ${color}; border-radius: 50%;"></span>
-            <strong>${series.name}</strong>
-          </div>
-          <div>${point.label || String(point.x)}: <strong style="color: ${color}">${point.y}</strong></div>
-        `;
+
+        // Use TooltipManager's helper to create content
+        content = TooltipManager.createDataPointContent(
+          series.name,
+          color,
+          point.label || String(point.x),
+          point.y,
+          'circle'
+        );
       }
 
+      // Get position relative to the container for tooltip placement
+      const containerRect = this.container.getBoundingClientRect();
       const padding = this.options.padding as ChartPadding;
       const circleX = parseFloat(element.getAttribute('cx') || '0') + padding.left;
       const circleY = parseFloat(element.getAttribute('cy') || '0') + padding.top;
-      this.showTooltip(content, circleX, circleY);
+
+      // TooltipManager expects viewport-relative coordinates
+      this.tooltipManager.show(content, containerRect.left + circleX, containerRect.top + circleY);
     }
   }
 
-  // ==========================================================================
-  // Responsive
-  // ==========================================================================
-
-  private setupResponsive(): void {
-    this.resizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (entry) {
-        const { width, height } = entry.contentRect;
-        this.resize(width, height);
-      }
-    });
-    this.resizeObserver.observe(this.container);
+  /**
+   * Hide the tooltip (called on mouseout events)
+   * Overrides the BaseChart method to use TooltipManager
+   */
+  protected override hideTooltip(): void {
+    this.tooltipManager?.hide();
   }
 
   // ==========================================================================
@@ -790,11 +797,8 @@ export class LineChart {
       this.options.height = height;
     }
 
-    if (this.svg) {
-      this.svg.setAttribute('width', String(this.options.width));
-      this.svg.setAttribute('height', String(this.options.height));
-      this.svg.setAttribute('viewBox', `0 0 ${this.options.width} ${this.options.height}`);
-    }
+    // Use inherited helper to update SVG dimensions
+    this.updateSVGDimensions(this.options.width, this.options.height);
 
     this.render();
     this.emit('resize', {
@@ -807,78 +811,21 @@ export class LineChart {
   /**
    * Destroy chart and clean up
    */
-  destroy(): void {
-    // Cancel animation frame
-    if (this.animationFrame) {
-      cancelAnimationFrame(this.animationFrame);
-    }
+  override destroy(): void {
+    // Clean up LineChart-specific resources first
+    // Destroy TooltipManager
+    this.tooltipManager?.destroy();
+    this.tooltipManager = null;
 
-    // Disconnect resize observer
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
-    }
+    // Destroy ResponsiveManager
+    this.responsiveManager?.destroy();
+    this.responsiveManager = null;
 
-    // Remove tooltip
-    if (this.tooltipElement && this.tooltipElement.parentNode) {
-      this.tooltipElement.parentNode.removeChild(this.tooltipElement);
-    }
+    // Clear series data
+    this.series = [];
 
-    // Clear container
-    clearElement(this.container);
-
-    // Clear references
-    this.svg = null;
-    this.defs = null;
-    this.chartArea = null;
-    this.eventHandlers.clear();
-  }
-
-  /**
-   * Get SVG element
-   */
-  getSVG(): SVGSVGElement {
-    if (!this.svg) {
-      throw new Error('Chart not initialized');
-    }
-    return this.svg;
-  }
-
-  /**
-   * Export as SVG string
-   */
-  toSVG(): string {
-    if (!this.svg) {
-      throw new Error('Chart not initialized');
-    }
-    return svgToString(this.svg);
-  }
-
-  /**
-   * Add event listener
-   */
-  on<T = unknown>(event: ChartEventType, handler: ChartEventHandler<T>): void {
-    if (!this.eventHandlers.has(event)) {
-      this.eventHandlers.set(event, new Set());
-    }
-    this.eventHandlers.get(event)!.add(handler as ChartEventHandler);
-  }
-
-  /**
-   * Remove event listener
-   */
-  off(event: ChartEventType, handler?: ChartEventHandler): void {
-    if (!handler) {
-      this.eventHandlers.delete(event);
-    } else {
-      this.eventHandlers.get(event)?.delete(handler);
-    }
-  }
-
-  /**
-   * Emit event
-   */
-  private emit<T = unknown>(event: ChartEventType, data: ChartEvent<T>): void {
-    this.eventHandlers.get(event)?.forEach((handler) => handler(data as ChartEvent));
+    // Call parent destroy to clean up base resources
+    super.destroy();
   }
 }
 

@@ -3,7 +3,8 @@
  * SVG bar chart with vertical/horizontal orientation and cyberpunk styling
  */
 
-import { chartColors, getThemeColor } from '../utils/colors';
+import { LAYOUT } from '../constants';
+import { CHART_THEMES, chartColors, getThemeColor } from '../utils/colors';
 import {
   niceExtent,
   generateTicks,
@@ -11,6 +12,7 @@ import {
   createLinearScale,
   createBandScale,
 } from '../utils/math';
+import { ResponsiveManager } from '../utils/ResponsiveManager';
 import {
   createSVGRoot,
   createDefs,
@@ -22,20 +24,13 @@ import {
   createLinearGradient,
   createScanlinesPattern,
   clearElement,
-  svgToString,
   applyGlowFilter,
 } from '../utils/svg';
+import { TooltipManager } from '../utils/TooltipManager';
 
-import type {
-  BarChartOptions,
-  ChartEvent,
-  ChartEventHandler,
-  ChartEventType,
-  ChartPadding,
-  ChartTheme,
-  DataPoint,
-  DataSeries,
-} from '../types';
+import { BaseChart } from './BaseChart';
+
+import type { BarChartOptions, ChartPadding, DataPoint, DataSeries } from '../types';
 
 // ============================================================================
 // Default Options
@@ -93,31 +88,26 @@ const DEFAULT_OPTIONS: Required<Omit<BarChartOptions, 'data'>> = {
 // BarChart Class
 // ============================================================================
 
-export class BarChart {
-  private container: HTMLElement;
-  private options: Required<Omit<BarChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] };
-  private svg: SVGSVGElement | null = null;
-  private defs: SVGDefsElement | null = null;
-  private chartArea: SVGGElement | null = null;
+export class BarChart extends BaseChart<
+  Required<Omit<BarChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] },
+  DataPoint[] | DataSeries[]
+> {
   private series: DataSeries[] = [];
-  private eventHandlers: Map<ChartEventType, Set<ChartEventHandler>> = new Map();
-  private resizeObserver: ResizeObserver | null = null;
-  private tooltipElement: HTMLDivElement | null = null;
+  private tooltipManager: TooltipManager | null = null;
+  private responsiveManager: ResponsiveManager | null = null;
 
   constructor(container: HTMLElement | string, options: BarChartOptions) {
-    // Get container element
-    if (typeof container === 'string') {
-      const el = document.querySelector(container);
-      if (!el) {
-        throw new Error(`Container not found: ${container}`);
-      }
-      this.container = el as HTMLElement;
-    } else {
-      this.container = container;
-    }
+    // Call base constructor with defaults
+    super(container, BarChart.mergeOptionsStatic(options), { width: 400, height: 300 });
 
-    // Merge options with defaults
-    this.options = this.mergeOptions(options);
+    // Validate dimensions using base class method
+    const validatedDimensions = this.validateDimensions(
+      this.options.width,
+      this.options.height,
+      'BarChart'
+    );
+    this.options.width = validatedDimensions.width;
+    this.options.height = validatedDimensions.height;
 
     // Normalize data to series format
     this.series = this.normalizeData(this.options.data);
@@ -127,10 +117,10 @@ export class BarChart {
   }
 
   // ==========================================================================
-  // Initialization
+  // Static Option Merging
   // ==========================================================================
 
-  private mergeOptions(
+  private static mergeOptionsStatic(
     options: BarChartOptions
   ): Required<Omit<BarChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] } {
     const merged = {
@@ -151,6 +141,16 @@ export class BarChart {
     }
 
     return merged as Required<Omit<BarChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] };
+  }
+
+  // ==========================================================================
+  // Initialization
+  // ==========================================================================
+
+  private mergeOptions(
+    options: BarChartOptions
+  ): Required<Omit<BarChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] } {
+    return BarChart.mergeOptionsStatic(options);
   }
 
   private normalizeData(data: DataPoint[] | DataSeries[]): DataSeries[] {
@@ -179,11 +179,19 @@ export class BarChart {
     this.render();
 
     if (this.options.responsive) {
-      this.setupResponsive();
+      this.responsiveManager = new ResponsiveManager(
+        this.container,
+        (width, height) => this.resize(width, height),
+        true
+      );
+      this.responsiveManager.setup();
     }
 
     if (this.options.tooltip.enabled) {
-      this.createTooltip();
+      this.tooltipManager = new TooltipManager(this.container, {
+        enabled: true,
+      });
+      this.tooltipManager.create();
     }
   }
 
@@ -195,7 +203,7 @@ export class BarChart {
     this.container.appendChild(this.svg);
   }
 
-  private createDefinitions(): void {
+  protected createDefinitions(): void {
     if (!this.svg) {
       return;
     }
@@ -204,8 +212,7 @@ export class BarChart {
     this.svg.appendChild(this.defs);
 
     // Create glow filters
-    const themes: ChartTheme[] = ['cyan', 'magenta', 'green', 'yellow'];
-    themes.forEach((theme) => {
+    CHART_THEMES.forEach((theme) => {
       const glowConfig = typeof this.options.glow === 'object' ? this.options.glow : {};
       const filter = createGlowFilter(`glow-${theme}`, theme, glowConfig);
       this.defs!.appendChild(filter);
@@ -240,7 +247,7 @@ export class BarChart {
   // Rendering
   // ==========================================================================
 
-  private render(): void {
+  render(): void {
     if (!this.svg) {
       return;
     }
@@ -284,9 +291,17 @@ export class BarChart {
         if (!categories.includes(point.x as string | number)) {
           categories.push(point.x as string | number);
         }
-        allValues.push(point.y);
+        // Filter out invalid Y values (NaN, undefined, null, or non-finite)
+        if (typeof point.y === 'number' && isFinite(point.y)) {
+          allValues.push(point.y);
+        }
       });
     });
+
+    // Handle empty data case
+    if (allValues.length === 0) {
+      console.warn('BarChart: No valid Y data points found, using default scale [0, 100]');
+    }
 
     const isVertical = this.options.orientation === 'vertical';
     const categoryDimension = isVertical ? chartWidth : chartHeight;
@@ -301,11 +316,11 @@ export class BarChart {
     );
 
     // Value scale
-    const [minVal, maxVal] = niceExtent(
-      Math.min(0, ...allValues),
-      Math.max(...allValues),
-      this.options.yAxis.ticks
-    );
+    // Use safe defaults when array is empty to avoid Infinity/-Infinity
+    const minValue = allValues.length > 0 ? Math.min(0, ...allValues) : 0;
+    const maxValue = allValues.length > 0 ? Math.max(...allValues) : 100;
+
+    const [minVal, maxVal] = niceExtent(minValue, maxValue, this.options.yAxis.ticks);
 
     const valueScale = isVertical
       ? createInvertedScale(minVal, maxVal, 0, valueDimension)
@@ -446,7 +461,6 @@ export class BarChart {
       }
 
       const theme = series.theme || this.options.theme;
-      const _color = series.color || getThemeColor(theme);
       const seriesGroup = createGroup(`${this.options.classPrefix}__series`);
       seriesGroup.setAttribute('data-series-id', series.id);
 
@@ -501,7 +515,7 @@ export class BarChart {
           this.handleBarHover(point, series, e, rect);
         });
         rect.addEventListener('mouseleave', () => {
-          this.hideTooltip();
+          this.tooltipManager?.hide();
         });
         rect.addEventListener('click', (e) => {
           this.emit('barClick', {
@@ -513,7 +527,7 @@ export class BarChart {
         });
 
         // Add animation
-        if (this.options.animate) {
+        if (this.shouldAnimate()) {
           const delay =
             this.options.animation.delay! + pointIndex * this.options.animation.stagger!;
           if (isVertical) {
@@ -551,7 +565,7 @@ export class BarChart {
             textAnchor: isVertical ? 'middle' : 'start',
           });
 
-          if (this.options.animate) {
+          if (this.shouldAnimate()) {
             valueLabel.style.opacity = '0';
             valueLabel.style.transition = `opacity ${this.options.animation.duration}ms`;
             valueLabel.style.transitionDelay = `${this.options.animation.duration}ms`;
@@ -581,30 +595,40 @@ export class BarChart {
     }
 
     const legendGroup = createGroup(`${this.options.classPrefix}__legend`);
-    const itemSpacing = 100;
-    const iconSize = 12;
+    const { ITEM_SPACING, ICON_SIZE, TOP_MARGIN, RIGHT_MARGIN, ICON_TEXT_GAP } = LAYOUT.LEGEND;
 
-    let startX = this.options.width - 20;
-    const y = 15;
+    let startX = this.options.width - RIGHT_MARGIN;
+    const y = TOP_MARGIN;
 
     [...this.series].reverse().forEach((series) => {
       const theme = series.theme || this.options.theme;
       const color = series.color || getThemeColor(theme);
 
-      const icon = createRect(startX - itemSpacing + 20, y - iconSize / 2, iconSize, iconSize, {
-        fill: color,
-        rx: 2,
-      });
+      const icon = createRect(
+        startX - ITEM_SPACING + RIGHT_MARGIN,
+        y - ICON_SIZE / 2,
+        ICON_SIZE,
+        ICON_SIZE,
+        {
+          fill: color,
+          rx: 2,
+        }
+      );
       legendGroup.appendChild(icon);
 
-      const text = createText(startX - itemSpacing + 20 + iconSize + 8, y, series.name, {
-        fill: chartColors.text,
-        fontSize: 11,
-        textAnchor: 'start',
-      });
+      const text = createText(
+        startX - ITEM_SPACING + RIGHT_MARGIN + ICON_SIZE + ICON_TEXT_GAP,
+        y,
+        series.name,
+        {
+          fill: chartColors.text,
+          fontSize: 11,
+          textAnchor: 'start',
+        }
+      );
       legendGroup.appendChild(text);
 
-      startX -= itemSpacing;
+      startX -= ITEM_SPACING;
     });
 
     this.svg.appendChild(legendGroup);
@@ -627,48 +651,8 @@ export class BarChart {
   }
 
   // ==========================================================================
-  // Tooltip
+  // Tooltip Handling
   // ==========================================================================
-
-  private createTooltip(): void {
-    this.tooltipElement = document.createElement('div');
-    this.tooltipElement.className = `${this.options.classPrefix}__tooltip`;
-    this.tooltipElement.style.cssText = `
-      position: absolute;
-      pointer-events: none;
-      background: ${chartColors.tooltipBg};
-      border: 1px solid ${chartColors.tooltipBorder};
-      border-radius: 4px;
-      padding: 8px 12px;
-      font-size: 12px;
-      color: ${chartColors.text};
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      z-index: 1000;
-      opacity: 0;
-      transition: opacity 0.15s;
-    `;
-    document.body.appendChild(this.tooltipElement);
-  }
-
-  private showTooltip(content: string, x: number, y: number): void {
-    if (!this.tooltipElement) {
-      return;
-    }
-
-    this.tooltipElement.innerHTML = content;
-    this.tooltipElement.style.opacity = '1';
-
-    const rect = this.container.getBoundingClientRect();
-    this.tooltipElement.style.left = `${rect.left + x + 15}px`;
-    this.tooltipElement.style.top = `${rect.top + y - 10}px`;
-  }
-
-  private hideTooltip(): void {
-    if (!this.tooltipElement) {
-      return;
-    }
-    this.tooltipElement.style.opacity = '0';
-  }
 
   private handleBarHover(
     point: DataPoint,
@@ -683,49 +667,40 @@ export class BarChart {
       originalEvent: event,
     });
 
-    if (this.options.tooltip.enabled) {
-      let content: string;
+    if (this.tooltipManager?.isEnabled()) {
+      let content: HTMLElement | string;
       if (this.options.tooltip.formatter) {
+        // Custom formatters return strings - treat as plain text for safety
         content = this.options.tooltip.formatter(point, series);
       } else {
         const theme = series.theme || this.options.theme;
         const color = series.color || getThemeColor(theme);
-        content = `
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-            <span style="width: 10px; height: 10px; background: ${color}; border-radius: 2px;"></span>
-            <strong>${series.name}</strong>
-          </div>
-          <div>${point.label || String(point.x)}: <strong style="color: ${color}">${point.y}</strong></div>
-        `;
+
+        // Use TooltipManager's helper for consistent tooltip content
+        content = TooltipManager.createDataPointContent(
+          series.name,
+          color,
+          point.label || String(point.x),
+          point.y,
+          'square' // Use square indicator for bar charts
+        );
       }
 
       const barRect = element.getBoundingClientRect();
-      const containerRect = this.container.getBoundingClientRect();
-      const x = barRect.left - containerRect.left + barRect.width / 2;
-      const y = barRect.top - containerRect.top;
-      this.showTooltip(content, x, y);
+      const x = barRect.left + barRect.width / 2;
+      const y = barRect.top;
+      this.tooltipManager.show(content, x, y);
     }
-  }
-
-  // ==========================================================================
-  // Responsive
-  // ==========================================================================
-
-  private setupResponsive(): void {
-    this.resizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (entry) {
-        const { width, height } = entry.contentRect;
-        this.resize(width, height);
-      }
-    });
-    this.resizeObserver.observe(this.container);
   }
 
   // ==========================================================================
   // Public API
   // ==========================================================================
 
+  /**
+   * Update the chart with new data
+   * @param data - New data points or series to display
+   */
   update(data: DataPoint[] | DataSeries[]): void {
     this.series = this.normalizeData(data);
     this.options.data = data;
@@ -738,6 +713,10 @@ export class BarChart {
     this.render();
   }
 
+  /**
+   * Update chart configuration options
+   * @param options - Partial options object to merge with existing options
+   */
   setOptions(options: Partial<BarChartOptions>): void {
     this.options = this.mergeOptions({ ...this.options, ...options });
     if (options.data) {
@@ -746,6 +725,11 @@ export class BarChart {
     this.render();
   }
 
+  /**
+   * Resize the chart to new dimensions
+   * @param width - New width in pixels (optional, keeps current if not provided)
+   * @param height - New height in pixels (optional, keeps current if not provided)
+   */
   resize(width?: number, height?: number): void {
     if (width) {
       this.options.width = width;
@@ -754,11 +738,7 @@ export class BarChart {
       this.options.height = height;
     }
 
-    if (this.svg) {
-      this.svg.setAttribute('width', String(this.options.width));
-      this.svg.setAttribute('height', String(this.options.height));
-      this.svg.setAttribute('viewBox', `0 0 ${this.options.width} ${this.options.height}`);
-    }
+    this.updateSVGDimensions(this.options.width, this.options.height);
 
     this.render();
     this.emit('resize', {
@@ -768,54 +748,23 @@ export class BarChart {
     });
   }
 
-  destroy(): void {
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
-    }
+  /**
+   * Destroy the chart instance and clean up all resources
+   * Removes DOM elements, disconnects observers, and clears event handlers
+   */
+  override destroy(): void {
+    // Clean up BarChart-specific resources first
+    this.series = [];
 
-    if (this.tooltipElement && this.tooltipElement.parentNode) {
-      this.tooltipElement.parentNode.removeChild(this.tooltipElement);
-    }
+    // Clean up managers
+    this.tooltipManager?.destroy();
+    this.tooltipManager = null;
 
-    clearElement(this.container);
+    this.responsiveManager?.destroy();
+    this.responsiveManager = null;
 
-    this.svg = null;
-    this.defs = null;
-    this.chartArea = null;
-    this.eventHandlers.clear();
-  }
-
-  getSVG(): SVGSVGElement {
-    if (!this.svg) {
-      throw new Error('Chart not initialized');
-    }
-    return this.svg;
-  }
-
-  toSVG(): string {
-    if (!this.svg) {
-      throw new Error('Chart not initialized');
-    }
-    return svgToString(this.svg);
-  }
-
-  on<T = unknown>(event: ChartEventType, handler: ChartEventHandler<T>): void {
-    if (!this.eventHandlers.has(event)) {
-      this.eventHandlers.set(event, new Set());
-    }
-    this.eventHandlers.get(event)!.add(handler as ChartEventHandler);
-  }
-
-  off(event: ChartEventType, handler?: ChartEventHandler): void {
-    if (!handler) {
-      this.eventHandlers.delete(event);
-    } else {
-      this.eventHandlers.get(event)?.delete(handler);
-    }
-  }
-
-  private emit<T = unknown>(event: ChartEventType, data: ChartEvent<T>): void {
-    this.eventHandlers.get(event)?.forEach((handler) => handler(data as ChartEvent));
+    // Call base class destroy for common cleanup
+    super.destroy();
   }
 }
 

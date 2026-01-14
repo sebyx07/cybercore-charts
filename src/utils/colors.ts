@@ -6,6 +6,15 @@
 import type { ChartTheme, CyberColorPalette } from '../types';
 
 // ============================================================================
+// Theme Constants
+// ============================================================================
+
+/**
+ * Standard chart themes used across all chart types
+ */
+export const CHART_THEMES: ChartTheme[] = ['cyan', 'magenta', 'green', 'yellow'];
+
+// ============================================================================
 // Cyberpunk Color Palette
 // ============================================================================
 
@@ -315,15 +324,14 @@ export function getContrastColor(hex: string): string {
  * Generate a color palette for multiple series
  */
 export function generateSeriesColors(count: number, startTheme: ChartTheme = 'cyan'): string[] {
-  const themes: ChartTheme[] = ['cyan', 'magenta', 'green', 'yellow'];
-  const startIndex = themes.indexOf(startTheme);
+  const startIndex = CHART_THEMES.indexOf(startTheme);
   const colors: string[] = [];
 
   for (let i = 0; i < count; i++) {
-    const themeIndex = (startIndex + i) % themes.length;
-    const theme = themes[themeIndex];
+    const themeIndex = (startIndex + i) % CHART_THEMES.length;
+    const theme = CHART_THEMES[themeIndex];
     // Vary the shade slightly for visual distinction
-    const shadeIndex = (5 - Math.floor(i / themes.length)) as keyof typeof cyberColors.cyan;
+    const shadeIndex = (5 - Math.floor(i / CHART_THEMES.length)) as keyof typeof cyberColors.cyan;
     const shade = Math.max(300, Math.min(700, shadeIndex * 100)) as keyof typeof cyberColors.cyan;
     colors.push(cyberColors[theme][shade] || cyberColors[theme][500]);
   }

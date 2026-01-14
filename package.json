@@ -5,10 +5,7 @@
   "description": "Zero-dependency cyberpunk SVG chart library with neon aesthetics and glitch effects",
   "main": "dist/cybercore-charts.js",
   "module": "dist/cybercore-charts.esm.js",
-  "browser": "dist/cybercore-charts.umd.js",
-  "unpkg": "dist/cybercore-charts.umd.min.js",
-  "jsdelivr": "dist/cybercore-charts.umd.min.js",
-  "types": "src/types.ts",
+  "types": "dist/index.d.ts",
   "files": [
     "dist",
     "src",
@@ -18,43 +15,17 @@
   ],
   "exports": {
     ".": {
-      "types": "./dist/types/index.d.ts",
+      "types": "./dist/index.d.ts",
       "import": "./dist/cybercore-charts.esm.js",
       "require": "./dist/cybercore-charts.js",
       "default": "./dist/cybercore-charts.esm.js"
     },
-    "./line": {
-      "types": "./dist/types/charts/LineChart.d.ts",
-      "import": "./src/charts/LineChart.ts"
-    },
-    "./bar": {
-      "types": "./dist/types/charts/BarChart.d.ts",
-      "import": "./src/charts/BarChart.ts"
-    },
-    "./gauge": {
-      "types": "./dist/types/charts/GaugeChart.d.ts",
-      "import": "./src/charts/GaugeChart.ts"
-    },
-    "./donut": {
-      "types": "./dist/types/charts/DonutChart.d.ts",
-      "import": "./src/charts/DonutChart.ts"
-    },
-    "./sparkline": {
-      "types": "./dist/types/charts/Sparkline.d.ts",
-      "import": "./src/charts/Sparkline.ts"
-    },
     "./react": {
-      "types": "./dist/types/react/index.d.ts",
+      "types": "./dist/react/index.d.ts",
       "import": "./dist/react/index.js",
       "default": "./dist/react/index.js"
     },
-    "./ember": {
-      "types": "./dist/types/ember/index.d.ts",
-      "import": "./dist/ember/index.js",
-      "default": "./dist/ember/index.js"
-    },
-    "./styles": "./src/styles/cyber-charts.scss",
-    "./styles/css": "./dist/cybercore-charts.css"
+    "./styles": "./src/styles/cyber-charts.scss"
   },
   "sideEffects": false,
   "scripts": {

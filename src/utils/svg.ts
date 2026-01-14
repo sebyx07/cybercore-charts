@@ -3,7 +3,7 @@
  * Helper functions for creating and manipulating SVG elements
  */
 
-import { getThemeColor, getGlowColor } from './colors';
+import { getThemeColor } from './colors';
 
 import type { ChartTheme, Point, GlowConfig } from '../types';
 
@@ -473,9 +473,6 @@ export function createGlowFilter(
   config: GlowConfig = {}
 ): SVGFilterElement {
   const { intensity = 1, blur = 4 } = config;
-  // Color available for future enhancements (e.g., tinting the glow)
-  const _color = getGlowColor(theme);
-  void _color;
 
   const filter = createSVGElement('filter', {
     id,
@@ -632,6 +629,20 @@ export function createAnimationCSS(
 // ============================================================================
 // Utility Functions
 // ============================================================================
+
+/**
+ * Escape HTML special characters to prevent XSS
+ */
+export function escapeHtml(text: string): string {
+  const htmlEscapes: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+  return text.replace(/[&<>"']/g, (char) => htmlEscapes[char]);
+}
 
 /**
  * Clear all children from an element

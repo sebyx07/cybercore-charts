@@ -20,6 +20,8 @@ import {
   applyGlowFilter,
 } from '../utils/svg';
 
+import { BaseChart } from './BaseChart';
+
 import type { GlowConfig, Point, SparklineOptions } from '../types';
 
 // ============================================================================
@@ -46,32 +48,31 @@ const DEFAULT_OPTIONS: Required<Omit<SparklineOptions, 'data'>> = {
 // Sparkline Class
 // ============================================================================
 
-export class Sparkline {
-  private container: HTMLElement;
-  private options: Required<Omit<SparklineOptions, 'data'>> & { data: number[] };
-  private svg: SVGSVGElement | null = null;
-  private defs: SVGDefsElement | null = null;
-
+export class Sparkline extends BaseChart<
+  Required<Omit<SparklineOptions, 'data'>> & { data: number[] },
+  number[]
+> {
   constructor(container: HTMLElement | string, options: SparklineOptions) {
-    if (typeof container === 'string') {
-      const el = document.querySelector(container);
-      if (!el) {
-        throw new Error(`Container not found: ${container}`);
-      }
-      this.container = el as HTMLElement;
-    } else {
-      this.container = container;
-    }
+    // Merge options with defaults before calling super
+    const mergedOptions = Sparkline.mergeOptionsStatic(options);
 
-    this.options = this.mergeOptions(options);
+    // Call parent constructor with merged options
+    super(container, mergedOptions, { width: 120, height: 32 });
+
+    // Validate and fix dimensions using BaseChart's method
+    const dims = this.validateDimensions(this.options.width, this.options.height, 'Sparkline');
+    this.options.width = dims.width;
+    this.options.height = dims.height;
+
+    // Initialize the chart
     this.init();
   }
 
   // ==========================================================================
-  // Initialization
+  // Static Option Merging
   // ==========================================================================
 
-  private mergeOptions(
+  private static mergeOptionsStatic(
     options: SparklineOptions
   ): Required<Omit<SparklineOptions, 'data'>> & { data: number[] } {
     return {
@@ -79,6 +80,20 @@ export class Sparkline {
       ...options,
     };
   }
+
+  // ==========================================================================
+  // Instance Option Merging (for setOptions)
+  // ==========================================================================
+
+  private mergeOptions(
+    options: SparklineOptions
+  ): Required<Omit<SparklineOptions, 'data'>> & { data: number[] } {
+    return Sparkline.mergeOptionsStatic(options);
+  }
+
+  // ==========================================================================
+  // Initialization
+  // ==========================================================================
 
   private init(): void {
     clearElement(this.container);
@@ -99,7 +114,11 @@ export class Sparkline {
     this.container.appendChild(this.svg);
   }
 
-  private createDefinitions(): void {
+  /**
+   * Creates SVG definitions (filters, gradients, patterns).
+   * Implements the abstract method from BaseChart.
+   */
+  protected createDefinitions(): void {
     if (!this.svg) {
       return;
     }
@@ -131,7 +150,11 @@ export class Sparkline {
   // Rendering
   // ==========================================================================
 
-  private render(): void {
+  /**
+   * Renders the chart.
+   * Implements the abstract method from BaseChart.
+   */
+  render(): void {
     if (!this.svg) {
       return;
     }
@@ -197,7 +220,7 @@ export class Sparkline {
     }
 
     // Add draw animation
-    if (this.options.animate) {
+    if (this.shouldAnimate()) {
       const length = this.approximatePathLength(points);
       linePath.style.strokeDasharray = String(length);
       linePath.style.strokeDashoffset = String(length);
@@ -243,7 +266,7 @@ export class Sparkline {
       }
 
       // Animate end point
-      if (this.options.animate) {
+      if (this.shouldAnimate()) {
         endPoint.style.opacity = '0';
         endPoint.style.transform = 'scale(0)';
         endPoint.style.transformOrigin = `${lastPoint.x}px ${lastPoint.y}px`;
@@ -275,7 +298,8 @@ export class Sparkline {
   // ==========================================================================
 
   /**
-   * Update sparkline with new data
+   * Update sparkline with new data.
+   * Implements the abstract method from BaseChart.
    */
   update(data: number[]): void {
     this.options.data = data;
@@ -297,7 +321,8 @@ export class Sparkline {
   }
 
   /**
-   * Resize sparkline
+   * Resize sparkline.
+   * Implements the abstract method from BaseChart.
    */
   resize(width?: number, height?: number): void {
     if (width) {
@@ -307,38 +332,25 @@ export class Sparkline {
       this.options.height = height;
     }
 
-    if (this.svg) {
-      this.svg.setAttribute('width', String(this.options.width));
-      this.svg.setAttribute('height', String(this.options.height));
-      this.svg.setAttribute('viewBox', `0 0 ${this.options.width} ${this.options.height}`);
-    }
+    // Use inherited helper to update SVG dimensions
+    this.updateSVGDimensions(this.options.width, this.options.height);
 
     this.render();
   }
 
   /**
-   * Destroy sparkline and clean up
+   * Destroy sparkline and clean up.
+   * Overrides BaseChart's destroy to handle any Sparkline-specific cleanup.
    */
-  destroy(): void {
-    clearElement(this.container);
-    this.svg = null;
-    this.defs = null;
-  }
-
-  /**
-   * Get SVG element
-   */
-  getSVG(): SVGSVGElement {
-    if (!this.svg) {
-      throw new Error('Sparkline not initialized');
-    }
-    return this.svg;
+  override destroy(): void {
+    // Call parent destroy to clean up base resources
+    super.destroy();
   }
 
   /**
    * Export as SVG string
    */
-  toSVG(): string {
+  override toSVG(): string {
     if (!this.svg) {
       throw new Error('Sparkline not initialized');
     }

@@ -3,8 +3,9 @@
  * Donut/pie chart with cyberpunk styling and segment interactions
  */
 
-import { chartColors, generateSeriesColors, getThemeColor } from '../utils/colors';
+import { CHART_THEMES, chartColors, generateSeriesColors, getThemeColor } from '../utils/colors';
 import { degToRad, sum } from '../utils/math';
+import { ResponsiveManager } from '../utils/ResponsiveManager';
 import {
   createSVGRoot,
   createDefs,
@@ -14,18 +15,13 @@ import {
   createGlowFilter,
   describeDonutSegment,
   clearElement,
-  svgToString,
   applyGlowFilter,
 } from '../utils/svg';
+import { TooltipManager } from '../utils/TooltipManager';
 
-import type {
-  ChartEvent,
-  ChartEventHandler,
-  ChartEventType,
-  ChartTheme,
-  DonutChartOptions,
-  DonutSegment,
-} from '../types';
+import { BaseChart } from './BaseChart';
+
+import type { DonutChartOptions, DonutSegment } from '../types';
 
 // ============================================================================
 // Default Options
@@ -73,31 +69,38 @@ const DEFAULT_OPTIONS: Required<Omit<DonutChartOptions, 'data'>> = {
 // DonutChart Class
 // ============================================================================
 
-export class DonutChart {
-  private container: HTMLElement;
-  private options: Required<Omit<DonutChartOptions, 'data'>> & { data: DonutSegment[] };
-  private svg: SVGSVGElement | null = null;
-  private defs: SVGDefsElement | null = null;
-  private chartArea: SVGGElement | null = null;
+export class DonutChart extends BaseChart<
+  Required<Omit<DonutChartOptions, 'data'>> & { data: DonutSegment[] },
+  DonutSegment[]
+> {
   private segments: DonutSegment[] = [];
   private segmentAngles: Array<{ start: number; end: number; segment: DonutSegment }> = [];
-  private eventHandlers: Map<ChartEventType, Set<ChartEventHandler>> = new Map();
-  private resizeObserver: ResizeObserver | null = null;
-  private tooltipElement: HTMLDivElement | null = null;
   private hoveredSegment: SVGPathElement | null = null;
+  private tooltipManager: TooltipManager | null = null;
+  private responsiveManager: ResponsiveManager | null = null;
 
   constructor(container: HTMLElement | string, options: DonutChartOptions) {
-    if (typeof container === 'string') {
-      const el = document.querySelector(container);
-      if (!el) {
-        throw new Error(`Container not found: ${container}`);
-      }
-      this.container = el as HTMLElement;
-    } else {
-      this.container = container;
-    }
+    // Call parent constructor with defaults
+    super(
+      container,
+      DonutChart.mergeOptions(options) as Required<Omit<DonutChartOptions, 'data'>> & {
+        data: DonutSegment[];
+      },
+      { width: 300, height: 300 }
+    );
 
-    this.options = this.mergeOptions(options);
+    // Resolve container using base class method
+    this.container = this.resolveContainer(container);
+
+    // Validate dimensions using base class method
+    const validatedDimensions = this.validateDimensions(
+      this.options.width,
+      this.options.height,
+      'DonutChart'
+    );
+    this.options.width = validatedDimensions.width;
+    this.options.height = validatedDimensions.height;
+
     this.segments = this.processSegments(this.options.data);
     this.init();
   }
@@ -106,7 +109,7 @@ export class DonutChart {
   // Initialization
   // ==========================================================================
 
-  private mergeOptions(
+  private static mergeOptions(
     options: DonutChartOptions
   ): Required<Omit<DonutChartOptions, 'data'>> & { data: DonutSegment[] } {
     const merged = {
@@ -128,7 +131,20 @@ export class DonutChart {
   }
 
   private processSegments(data: DonutSegment[]): DonutSegment[] {
-    let processed = [...data];
+    // Filter out segments with negative or non-finite values
+    let processed = data.filter((segment) => {
+      if (typeof segment.value !== 'number' || !isFinite(segment.value)) {
+        console.warn(`DonutChart: Segment "${segment.label}" has invalid value, skipping`);
+        return false;
+      }
+      if (segment.value < 0) {
+        console.warn(
+          `DonutChart: Segment "${segment.label}" has negative value (${segment.value}), skipping`
+        );
+        return false;
+      }
+      return true;
+    });
 
     // Sort if requested
     if (this.options.sortSegments) {
@@ -154,11 +170,19 @@ export class DonutChart {
     this.render();
 
     if (this.options.responsive) {
-      this.setupResponsive();
+      this.responsiveManager = new ResponsiveManager(
+        this.container,
+        (width, height) => this.resize(width, height),
+        true
+      );
+      this.responsiveManager.setup();
     }
 
     if (this.options.tooltip.enabled) {
-      this.createTooltip();
+      this.tooltipManager = new TooltipManager(this.container, {
+        enabled: true,
+      });
+      this.tooltipManager.create();
     }
   }
 
@@ -170,7 +194,7 @@ export class DonutChart {
     this.container.appendChild(this.svg);
   }
 
-  private createDefinitions(): void {
+  protected createDefinitions(): void {
     if (!this.svg) {
       return;
     }
@@ -179,8 +203,7 @@ export class DonutChart {
     this.svg.appendChild(this.defs);
 
     // Create glow filters for each theme
-    const themes: ChartTheme[] = ['cyan', 'magenta', 'green', 'yellow'];
-    themes.forEach((theme) => {
+    CHART_THEMES.forEach((theme) => {
       const glowConfig = typeof this.options.glow === 'object' ? this.options.glow : {};
       const filter = createGlowFilter(`glow-${theme}`, theme, glowConfig);
       this.defs!.appendChild(filter);
@@ -212,7 +235,7 @@ export class DonutChart {
   // Rendering
   // ==========================================================================
 
-  private render(): void {
+  render(): void {
     if (!this.svg) {
       return;
     }
@@ -308,7 +331,7 @@ export class DonutChart {
       });
 
       // Add animation
-      if (this.options.animate) {
+      if (this.shouldAnimate()) {
         const delay = this.options.animation.delay! + index * this.options.animation.stagger!;
         path.style.opacity = '0';
         path.style.transform = `scale(0.8)`;
@@ -359,7 +382,7 @@ export class DonutChart {
       });
 
       // Add animation
-      if (this.options.animate) {
+      if (this.shouldAnimate()) {
         label.style.opacity = '0';
         label.style.transition = `opacity ${this.options.animation.duration}ms`;
         label.style.transitionDelay = `${this.options.animation.duration}ms`;
@@ -470,87 +493,32 @@ export class DonutChart {
       originalEvent: event,
     });
 
-    // Show tooltip
-    if (this.options.tooltip.enabled) {
+    // Show tooltip using TooltipManager
+    if (this.tooltipManager && this.options.tooltip.enabled) {
       const total = sum(this.segments.map((s) => s.value));
-      const percentage = total > 0 ? ((segment.value / total) * 100).toFixed(1) : '0';
+      const percentage = total > 0 ? ((segment.value / total) * 100).toFixed(1) + '%' : '0%';
       const theme = segment.theme || this.options.theme;
       const color = segment.color || getThemeColor(theme);
 
-      const content = `
-        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-          <span style="width: 10px; height: 10px; background: ${color}; border-radius: 2px;"></span>
-          <strong>${segment.label}</strong>
-        </div>
-        <div>Value: <strong style="color: ${color}">${segment.value}</strong></div>
-        <div>Percentage: <strong style="color: ${color}">${percentage}%</strong></div>
-      `;
+      // Use TooltipManager's createSegmentContent helper
+      const content = TooltipManager.createSegmentContent(
+        segment.label,
+        color,
+        segment.value,
+        percentage
+      );
 
-      this.showTooltip(content, event.clientX, event.clientY);
+      // DonutChart uses fixed positioning with window coordinates
+      this.tooltipManager.show(content, event.clientX, event.clientY);
     }
   }
 
   private handleSegmentLeave(element: SVGPathElement): void {
     element.style.transform = 'scale(1)';
     this.hoveredSegment = null;
-    this.hideTooltip();
-  }
-
-  // ==========================================================================
-  // Tooltip
-  // ==========================================================================
-
-  private createTooltip(): void {
-    this.tooltipElement = document.createElement('div');
-    this.tooltipElement.className = `${this.options.classPrefix}__tooltip`;
-    this.tooltipElement.style.cssText = `
-      position: fixed;
-      pointer-events: none;
-      background: ${chartColors.tooltipBg};
-      border: 1px solid ${chartColors.tooltipBorder};
-      border-radius: 4px;
-      padding: 8px 12px;
-      font-size: 12px;
-      color: ${chartColors.text};
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      z-index: 1000;
-      opacity: 0;
-      transition: opacity 0.15s;
-    `;
-    document.body.appendChild(this.tooltipElement);
-  }
-
-  private showTooltip(content: string, x: number, y: number): void {
-    if (!this.tooltipElement) {
-      return;
+    if (this.tooltipManager) {
+      this.tooltipManager.hide();
     }
-
-    this.tooltipElement.innerHTML = content;
-    this.tooltipElement.style.opacity = '1';
-    this.tooltipElement.style.left = `${x + 15}px`;
-    this.tooltipElement.style.top = `${y - 10}px`;
-  }
-
-  private hideTooltip(): void {
-    if (!this.tooltipElement) {
-      return;
-    }
-    this.tooltipElement.style.opacity = '0';
-  }
-
-  // ==========================================================================
-  // Responsive
-  // ==========================================================================
-
-  private setupResponsive(): void {
-    this.resizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (entry) {
-        const { width, height } = entry.contentRect;
-        this.resize(width, height);
-      }
-    });
-    this.resizeObserver.observe(this.container);
   }
 
   // ==========================================================================
@@ -571,7 +539,7 @@ export class DonutChart {
    * Update chart options
    */
   setOptions(options: Partial<DonutChartOptions>): void {
-    this.options = this.mergeOptions({ ...this.options, ...options });
+    this.options = DonutChart.mergeOptions({ ...this.options, ...options });
     if (options.data) {
       this.segments = this.processSegments(options.data);
     }
@@ -590,11 +558,7 @@ export class DonutChart {
       this.options.height = height;
     }
 
-    if (this.svg) {
-      this.svg.setAttribute('width', String(this.options.width));
-      this.svg.setAttribute('height', String(this.options.height));
-      this.svg.setAttribute('viewBox', `0 0 ${this.options.width} ${this.options.height}`);
-    }
+    this.updateSVGDimensions(this.options.width, this.options.height);
 
     this.render();
     this.emit('resize', {
@@ -607,41 +571,25 @@ export class DonutChart {
   /**
    * Destroy chart and clean up
    */
-  destroy(): void {
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
+  override destroy(): void {
+    // Clean up managers
+    if (this.tooltipManager) {
+      this.tooltipManager.destroy();
+      this.tooltipManager = null;
     }
 
-    if (this.tooltipElement && this.tooltipElement.parentNode) {
-      this.tooltipElement.parentNode.removeChild(this.tooltipElement);
+    if (this.responsiveManager) {
+      this.responsiveManager.destroy();
+      this.responsiveManager = null;
     }
 
-    clearElement(this.container);
+    // Reset DonutChart-specific state
+    this.hoveredSegment = null;
+    this.segments = [];
+    this.segmentAngles = [];
 
-    this.svg = null;
-    this.defs = null;
-    this.chartArea = null;
-    this.eventHandlers.clear();
-  }
-
-  /**
-   * Get SVG element
-   */
-  getSVG(): SVGSVGElement {
-    if (!this.svg) {
-      throw new Error('Chart not initialized');
-    }
-    return this.svg;
-  }
-
-  /**
-   * Export as SVG string
-   */
-  toSVG(): string {
-    if (!this.svg) {
-      throw new Error('Chart not initialized');
-    }
-    return svgToString(this.svg);
+    // Call parent destroy to clean up base resources
+    super.destroy();
   }
 
   /**
@@ -649,31 +597,6 @@ export class DonutChart {
    */
   getTotal(): number {
     return sum(this.segments.map((s) => s.value));
-  }
-
-  /**
-   * Add event listener
-   */
-  on<T = unknown>(event: ChartEventType, handler: ChartEventHandler<T>): void {
-    if (!this.eventHandlers.has(event)) {
-      this.eventHandlers.set(event, new Set());
-    }
-    this.eventHandlers.get(event)!.add(handler as ChartEventHandler);
-  }
-
-  /**
-   * Remove event listener
-   */
-  off(event: ChartEventType, handler?: ChartEventHandler): void {
-    if (!handler) {
-      this.eventHandlers.delete(event);
-    } else {
-      this.eventHandlers.get(event)?.delete(handler);
-    }
-  }
-
-  private emit<T = unknown>(event: ChartEventType, data: ChartEvent<T>): void {
-    this.eventHandlers.get(event)?.forEach((handler) => handler(data as ChartEvent));
   }
 }
 
