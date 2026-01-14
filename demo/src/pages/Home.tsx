@@ -190,8 +190,8 @@ function Home() {
         <p className="cyber-hero__subtitle">[ Data Visualization System v1.0 ]</p>
         <h1 className="cyber-hero__title cyber-text-glow">CYBERCORE CHARTS</h1>
         <p className="cyber-hero__description">
-          Built by AI, for AI. Zero-dependency SVG charts with neon aesthetics.
-          Perfect for AI-powered dashboards and data visualization.
+          Built by AI, for AI. Zero-dependency SVG charts with neon aesthetics. Perfect for
+          AI-powered dashboards and data visualization.
         </p>
         <div className="cyber-hero__actions">
           <a

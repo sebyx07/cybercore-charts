@@ -75,9 +75,7 @@ const MockLineChart = ({
       {/* Area fill */}
       {showArea && (
         <path d={areaD} fill={`url(#areaGradient-${color})`}>
-          {animated && (
-            <animate attributeName="opacity" values="0;1" dur="1s" fill="freeze" />
-          )}
+          {animated && <animate attributeName="opacity" values="0;1" dur="1s" fill="freeze" />}
         </path>
       )}
 
@@ -92,12 +90,7 @@ const MockLineChart = ({
         filter="url(#glowFilter)"
       >
         {animated && (
-          <animate
-            attributeName="stroke-dasharray"
-            values="0,1000;1000,0"
-            dur="2s"
-            fill="freeze"
-          />
+          <animate attributeName="stroke-dasharray" values="0,1000;1000,0" dur="2s" fill="freeze" />
         )}
       </path>
 
@@ -144,7 +137,9 @@ const sampleData = {
 };
 
 function LineCharts() {
-  const [activeVariant, setActiveVariant] = useState<'basic' | 'area' | 'animated' | 'multi'>('basic');
+  const [activeVariant, setActiveVariant] = useState<'basic' | 'area' | 'animated' | 'multi'>(
+    'basic'
+  );
 
   return (
     <div className="cyber-container">
@@ -288,17 +283,49 @@ function LineCharts() {
             {/* Legend */}
             <g transform="translate(50, 180)">
               <line x1="0" y1="0" x2="20" y2="0" stroke="var(--cyber-cyan-500)" strokeWidth="2" />
-              <text x="30" y="4" fill="var(--cyber-chrome-300)" fontSize="10" fontFamily="var(--font-mono)">
+              <text
+                x="30"
+                y="4"
+                fill="var(--cyber-chrome-300)"
+                fontSize="10"
+                fontFamily="var(--font-mono)"
+              >
                 Revenue
               </text>
 
-              <line x1="100" y1="0" x2="120" y2="0" stroke="var(--cyber-magenta-500)" strokeWidth="2" />
-              <text x="130" y="4" fill="var(--cyber-chrome-300)" fontSize="10" fontFamily="var(--font-mono)">
+              <line
+                x1="100"
+                y1="0"
+                x2="120"
+                y2="0"
+                stroke="var(--cyber-magenta-500)"
+                strokeWidth="2"
+              />
+              <text
+                x="130"
+                y="4"
+                fill="var(--cyber-chrome-300)"
+                fontSize="10"
+                fontFamily="var(--font-mono)"
+              >
                 Users
               </text>
 
-              <line x1="190" y1="0" x2="210" y2="0" stroke="var(--cyber-green-500)" strokeWidth="2" />
-              <text x="220" y="4" fill="var(--cyber-chrome-300)" fontSize="10" fontFamily="var(--font-mono)">
+              <line
+                x1="190"
+                y1="0"
+                x2="210"
+                y2="0"
+                stroke="var(--cyber-green-500)"
+                strokeWidth="2"
+              />
+              <text
+                x="220"
+                y="4"
+                fill="var(--cyber-chrome-300)"
+                fontSize="10"
+                fontFamily="var(--font-mono)"
+              >
                 Growth
               </text>
             </g>

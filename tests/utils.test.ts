@@ -35,11 +35,7 @@ import {
 } from '../src/utils/colors';
 
 // Import SVG utilities
-import {
-  pointsToPath,
-  describeArc,
-  createSVGElement,
-} from '../src/utils/svg';
+import { pointsToPath, describeArc, createSVGElement } from '../src/utils/svg';
 
 import type { Point } from '../src/types';
 
@@ -437,7 +433,6 @@ describe('Color Utilities', () => {
     });
   });
 });
-
 
 describe('SVG Generation Utilities', () => {
   // These tests validate that generated SVG strings are valid

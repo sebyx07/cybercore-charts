@@ -19,10 +19,5 @@
     "skipLibCheck": true,
     "composite": true
   },
-  "include": [
-    "vite.config.ts",
-    "vitest.config.ts",
-    "*.config.ts",
-    "*.config.js"
-  ]
+  "include": ["vite.config.ts", "vitest.config.ts", "*.config.ts", "*.config.js"]
 }

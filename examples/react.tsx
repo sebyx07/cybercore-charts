@@ -239,7 +239,9 @@ export function CyberSparkline({ data, className, style, ...options }: CyberSpar
     chartRef.current?.update(data);
   }, [data]);
 
-  return <span ref={containerRef} className={className} style={{ display: 'inline-block', ...style }} />;
+  return (
+    <span ref={containerRef} className={className} style={{ display: 'inline-block', ...style }} />
+  );
 }
 
 // ============================================================================
@@ -399,7 +401,9 @@ export function CyberDashboard() {
             alignItems: 'center',
           }}
         >
-          <h3 style={{ color: cyberColors.cyan[500], marginBottom: '1rem', alignSelf: 'flex-start' }}>
+          <h3
+            style={{ color: cyberColors.cyan[500], marginBottom: '1rem', alignSelf: 'flex-start' }}
+          >
             // GAUGE CHART
           </h3>
           <CyberGauge

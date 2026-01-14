@@ -64,28 +64,16 @@
 // =============================================================================
 
 export { default as CyberLineChart } from './components/cyber-line-chart';
-export type {
-  CyberLineChartArgs,
-  CyberLineChartSignature,
-} from './components/cyber-line-chart';
+export type { CyberLineChartArgs, CyberLineChartSignature } from './components/cyber-line-chart';
 
 export { default as CyberBarChart } from './components/cyber-bar-chart';
-export type {
-  CyberBarChartArgs,
-  CyberBarChartSignature,
-} from './components/cyber-bar-chart';
+export type { CyberBarChartArgs, CyberBarChartSignature } from './components/cyber-bar-chart';
 
 export { default as CyberGaugeChart } from './components/cyber-gauge-chart';
-export type {
-  CyberGaugeChartArgs,
-  CyberGaugeChartSignature,
-} from './components/cyber-gauge-chart';
+export type { CyberGaugeChartArgs, CyberGaugeChartSignature } from './components/cyber-gauge-chart';
 
 export { default as CyberDonutChart } from './components/cyber-donut-chart';
-export type {
-  CyberDonutChartArgs,
-  CyberDonutChartSignature,
-} from './components/cyber-donut-chart';
+export type { CyberDonutChartArgs, CyberDonutChartSignature } from './components/cyber-donut-chart';
 
 export { default as CyberSparkline } from './components/cyber-sparkline';
 export type {
@@ -102,13 +90,7 @@ export { default as cyberChartModifier } from './modifiers/cyber-chart';
 export type { CyberChartModifierSignature } from './modifiers/cyber-chart';
 
 // Re-export chart classes for use with the modifier
-export {
-  LineChart,
-  BarChart,
-  GaugeChart,
-  DonutChart,
-  Sparkline,
-} from './modifiers/cyber-chart';
+export { LineChart, BarChart, GaugeChart, DonutChart, Sparkline } from './modifiers/cyber-chart';
 
 // =============================================================================
 // Re-export types from main library

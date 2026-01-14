@@ -115,7 +115,9 @@ export class LineChart {
     // Get container element
     if (typeof container === 'string') {
       const el = document.querySelector(container);
-      if (!el) {throw new Error(`Container not found: ${container}`);}
+      if (!el) {
+        throw new Error(`Container not found: ${container}`);
+      }
       this.container = el as HTMLElement;
     } else {
       this.container = container;
@@ -135,7 +137,9 @@ export class LineChart {
   // Initialization
   // ==========================================================================
 
-  private mergeOptions(options: LineChartOptions): Required<Omit<LineChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] } {
+  private mergeOptions(
+    options: LineChartOptions
+  ): Required<Omit<LineChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] } {
     const merged = {
       ...DEFAULT_OPTIONS,
       ...options,
@@ -154,14 +158,18 @@ export class LineChart {
       merged.glow = { enabled: true, ...options.glow };
     }
 
-    return merged as Required<Omit<LineChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] };
+    return merged as Required<Omit<LineChartOptions, 'data'>> & {
+      data: DataPoint[] | DataSeries[];
+    };
   }
 
   private normalizeData(data: DataPoint[] | DataSeries[]): DataSeries[] {
-    if (data.length === 0) {return [];}
+    if (data.length === 0) {
+      return [];
+    }
 
     // Check if it's already series format
-    if ('data' in data[0] && Array.isArray((data[0]).data)) {
+    if ('data' in data[0] && Array.isArray(data[0].data)) {
       return data as DataSeries[];
     }
 
@@ -206,7 +214,9 @@ export class LineChart {
   }
 
   private createDefinitions(): void {
-    if (!this.svg) {return;}
+    if (!this.svg) {
+      return;
+    }
 
     this.defs = createDefs();
     this.svg.appendChild(this.defs);
@@ -242,7 +252,9 @@ export class LineChart {
   // ==========================================================================
 
   private render(): void {
-    if (!this.svg) {return;}
+    if (!this.svg) {
+      return;
+    }
 
     // Clear existing chart area
     if (this.chartArea) {
@@ -327,7 +339,9 @@ export class LineChart {
     yScale: (value: number) => number,
     xLabels: (string | number)[]
   ): void {
-    if (!this.chartArea) {return;}
+    if (!this.chartArea) {
+      return;
+    }
 
     const padding = this.options.padding as ChartPadding;
     const axisGroup = createGroup(
@@ -396,7 +410,9 @@ export class LineChart {
       // X ticks and labels
       const labelStep = Math.ceil(xLabels.length / (this.options.xAxis.ticks || 5));
       xLabels.forEach((label, index) => {
-        if (index % labelStep !== 0 && index !== xLabels.length - 1) {return;}
+        if (index % labelStep !== 0 && index !== xLabels.length - 1) {
+          return;
+        }
 
         const x = xScale(label);
 
@@ -434,12 +450,16 @@ export class LineChart {
     xScale: (value: string | number) => number,
     yScale: (value: number) => number
   ): void {
-    if (!this.chartArea) {return;}
+    if (!this.chartArea) {
+      return;
+    }
 
     const padding = this.options.padding as ChartPadding;
 
     this.series.forEach((series, seriesIndex) => {
-      if (series.visible === false) {return;}
+      if (series.visible === false) {
+        return;
+      }
 
       const seriesGroup = createGroup(
         `${this.options.classPrefix}__series`,
@@ -534,7 +554,8 @@ export class LineChart {
 
           // Add animation delay for staggered effect
           if (this.options.animate) {
-            const delay = this.options.animation.delay! + pointIndex * this.options.animation.stagger!;
+            const delay =
+              this.options.animation.delay! + pointIndex * this.options.animation.stagger!;
             circle.style.opacity = '0';
             circle.style.transform = 'scale(0)';
             circle.style.transformOrigin = `${point.x}px ${point.y}px`;
@@ -558,7 +579,9 @@ export class LineChart {
   }
 
   private renderLegend(): void {
-    if (!this.svg) {return;}
+    if (!this.svg) {
+      return;
+    }
 
     const legendGroup = createGroup(`${this.options.classPrefix}__legend`);
     const itemSpacing = 100;
@@ -573,10 +596,16 @@ export class LineChart {
       const color = series.color || getThemeColor(theme);
 
       // Legend icon (small line)
-      const icon = createLine(startX - itemSpacing + 20, y, startX - itemSpacing + 20 + iconSize, y, {
-        stroke: color,
-        strokeWidth: 2,
-      });
+      const icon = createLine(
+        startX - itemSpacing + 20,
+        y,
+        startX - itemSpacing + 20 + iconSize,
+        y,
+        {
+          stroke: color,
+          strokeWidth: 2,
+        }
+      );
       legendGroup.appendChild(icon);
 
       // Legend text
@@ -594,7 +623,9 @@ export class LineChart {
   }
 
   private renderScanlines(): void {
-    if (!this.svg) {return;}
+    if (!this.svg) {
+      return;
+    }
 
     const scanlineRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     scanlineRect.setAttribute('x', '0');
@@ -644,7 +675,9 @@ export class LineChart {
   }
 
   private showTooltip(content: string, x: number, y: number): void {
-    if (!this.tooltipElement) {return;}
+    if (!this.tooltipElement) {
+      return;
+    }
 
     this.tooltipElement.innerHTML = content;
     this.tooltipElement.style.opacity = '1';
@@ -656,7 +689,9 @@ export class LineChart {
   }
 
   private hideTooltip(): void {
-    if (!this.tooltipElement) {return;}
+    if (!this.tooltipElement) {
+      return;
+    }
     this.tooltipElement.style.opacity = '0';
   }
 
@@ -748,8 +783,12 @@ export class LineChart {
    * Resize chart
    */
   resize(width?: number, height?: number): void {
-    if (width) {this.options.width = width;}
-    if (height) {this.options.height = height;}
+    if (width) {
+      this.options.width = width;
+    }
+    if (height) {
+      this.options.height = height;
+    }
 
     if (this.svg) {
       this.svg.setAttribute('width', String(this.options.width));
@@ -758,7 +797,11 @@ export class LineChart {
     }
 
     this.render();
-    this.emit('resize', { type: 'resize', target: null, data: { width: this.options.width, height: this.options.height } });
+    this.emit('resize', {
+      type: 'resize',
+      target: null,
+      data: { width: this.options.width, height: this.options.height },
+    });
   }
 
   /**
@@ -794,7 +837,9 @@ export class LineChart {
    * Get SVG element
    */
   getSVG(): SVGSVGElement {
-    if (!this.svg) {throw new Error('Chart not initialized');}
+    if (!this.svg) {
+      throw new Error('Chart not initialized');
+    }
     return this.svg;
   }
 
@@ -802,7 +847,9 @@ export class LineChart {
    * Export as SVG string
    */
   toSVG(): string {
-    if (!this.svg) {throw new Error('Chart not initialized');}
+    if (!this.svg) {
+      throw new Error('Chart not initialized');
+    }
     return svgToString(this.svg);
   }
 

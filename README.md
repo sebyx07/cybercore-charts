@@ -11,8 +11,7 @@
 
 _Neon glows, dark themes, and futuristic data visualization_
 
-[Live Demo](#) |
-[Documentation](#) |
+[Live Demo](#) | [Documentation](#) |
 [GitHub](https://github.com/sebyx07/cybercore-charts)
 
 </div>
@@ -21,16 +20,16 @@ _Neon glows, dark themes, and futuristic data visualization_
 
 ## Features
 
-| Feature              | Description                                     |
-| -------------------- | ----------------------------------------------- |
-| **Zero Dependencies**| No runtime dependencies - pure TypeScript       |
-| **SVG Output**       | Clean SVG strings or DOM elements               |
-| **SSR Compatible**   | Works in Node.js and browser environments       |
-| **Cyberpunk Theme**  | Neon glows, dark backgrounds, futuristic style  |
-| **Fully Typed**      | Complete TypeScript definitions                 |
-| **Tree-Shakeable**   | Import only the charts you need                 |
-| **Accessible**       | Respects `prefers-reduced-motion`               |
-| **Tiny Bundle**      | <10KB minified + gzipped                        |
+| Feature               | Description                                    |
+| --------------------- | ---------------------------------------------- |
+| **Zero Dependencies** | No runtime dependencies - pure TypeScript      |
+| **SVG Output**        | Clean SVG strings or DOM elements              |
+| **SSR Compatible**    | Works in Node.js and browser environments      |
+| **Cyberpunk Theme**   | Neon glows, dark backgrounds, futuristic style |
+| **Fully Typed**       | Complete TypeScript definitions                |
+| **Tree-Shakeable**    | Import only the charts you need                |
+| **Accessible**        | Respects `prefers-reduced-motion`              |
+| **Tiny Bundle**       | <10KB minified + gzipped                       |
 
 ---
 
@@ -86,7 +85,11 @@ import { LineChart } from 'cybercore-charts';
 const chart = new LineChart({
   width: 600,
   height: 400,
-  data: [{ x: 0, y: 10 }, { x: 1, y: 25 }, { x: 2, y: 15 }],
+  data: [
+    { x: 0, y: 10 },
+    { x: 1, y: 25 },
+    { x: 2, y: 15 },
+  ],
   color: '#00f0ff',
   glow: true,
   curve: 'smooth',
@@ -141,7 +144,11 @@ import { AreaChart } from 'cybercore-charts';
 const chart = new AreaChart({
   width: 600,
   height: 400,
-  data: [{ x: 0, y: 10 }, { x: 1, y: 25 }, { x: 2, y: 15 }],
+  data: [
+    { x: 0, y: 10 },
+    { x: 1, y: 25 },
+    { x: 2, y: 15 },
+  ],
   gradient: true,
   color: '#ff00aa',
 });
@@ -221,12 +228,13 @@ All chart types accept these base options:
 
 ```typescript
 interface ChartOptions {
-  width: number;            // Chart width in pixels
-  height: number;           // Chart height in pixels
-  theme?: ThemeConfig;      // Custom theme configuration
-  animate?: boolean;        // Enable animations (default: true)
-  responsive?: boolean;     // Enable responsive sizing
-  padding?: {               // Chart padding
+  width: number; // Chart width in pixels
+  height: number; // Chart height in pixels
+  theme?: ThemeConfig; // Custom theme configuration
+  animate?: boolean; // Enable animations (default: true)
+  responsive?: boolean; // Enable responsive sizing
+  padding?: {
+    // Chart padding
     top: number;
     right: number;
     bottom: number;
@@ -264,7 +272,7 @@ import { LineChart } from 'cybercore-charts';
 
 // Use preset theme
 const chart = new LineChart({
-  theme: 'cyber',  // 'cyber' | 'neon' | 'matrix'
+  theme: 'cyber', // 'cyber' | 'neon' | 'matrix'
   // ...
 });
 ```
@@ -401,8 +409,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 **Data visualization for Night City**
 
-[Demo](#) |
-[Docs](#) |
+[Demo](#) | [Docs](#) |
 [Issues](https://github.com/sebyx07/cybercore-charts/issues)
 
 </div>

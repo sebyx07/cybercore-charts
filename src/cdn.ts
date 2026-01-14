@@ -35,17 +35,7 @@ import {
   rgbToHex,
   withOpacity,
 } from './utils/colors';
-import {
-  clamp,
-  easings,
-  getEasing,
-  lerp,
-  mean,
-  median,
-  round,
-  scale,
-  sum,
-} from './utils/math';
+import { clamp, easings, getEasing, lerp, mean, median, round, scale, sum } from './utils/math';
 
 import { createChart, VERSION } from './index';
 

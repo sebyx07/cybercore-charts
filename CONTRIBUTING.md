@@ -5,7 +5,8 @@ provides guidelines for contributing to the project.
 
 ## Code of Conduct
 
-Be respectful and constructive. We welcome contributors of all experience levels.
+Be respectful and constructive. We welcome contributors of all experience
+levels.
 
 ## Getting Started
 
@@ -96,20 +97,24 @@ src/
 
 ```markdown
 ## Description
+
 Brief description of the changes
 
 ## Type of Change
+
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Breaking change
 - [ ] Documentation update
 
 ## Testing
+
 - [ ] Unit tests added/updated
 - [ ] Visual tests added/updated
 - [ ] Manual testing performed
 
 ## Checklist
+
 - [ ] Code follows project style guidelines
 - [ ] Self-review completed
 - [ ] Documentation updated if needed

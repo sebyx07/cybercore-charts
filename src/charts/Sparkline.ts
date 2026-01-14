@@ -4,12 +4,7 @@
  */
 
 import { getThemeColor } from '../utils/colors';
-import {
-  extent,
-  createLinearScale,
-  createInvertedScale,
-  smoothPath,
-} from '../utils/math';
+import { extent, createLinearScale, createInvertedScale, smoothPath } from '../utils/math';
 import {
   createSVGRoot,
   createDefs,
@@ -60,7 +55,9 @@ export class Sparkline {
   constructor(container: HTMLElement | string, options: SparklineOptions) {
     if (typeof container === 'string') {
       const el = document.querySelector(container);
-      if (!el) {throw new Error(`Container not found: ${container}`);}
+      if (!el) {
+        throw new Error(`Container not found: ${container}`);
+      }
       this.container = el as HTMLElement;
     } else {
       this.container = container;
@@ -74,7 +71,9 @@ export class Sparkline {
   // Initialization
   // ==========================================================================
 
-  private mergeOptions(options: SparklineOptions): Required<Omit<SparklineOptions, 'data'>> & { data: number[] } {
+  private mergeOptions(
+    options: SparklineOptions
+  ): Required<Omit<SparklineOptions, 'data'>> & { data: number[] } {
     return {
       ...DEFAULT_OPTIONS,
       ...options,
@@ -101,7 +100,9 @@ export class Sparkline {
   }
 
   private createDefinitions(): void {
-    if (!this.svg) {return;}
+    if (!this.svg) {
+      return;
+    }
 
     this.defs = createDefs();
     this.svg.appendChild(this.defs);
@@ -131,7 +132,9 @@ export class Sparkline {
   // ==========================================================================
 
   private render(): void {
-    if (!this.svg) {return;}
+    if (!this.svg) {
+      return;
+    }
 
     // Remove existing content (except defs)
     const existingGroup = this.svg.querySelector('.cyber-sparkline__content');
@@ -297,8 +300,12 @@ export class Sparkline {
    * Resize sparkline
    */
   resize(width?: number, height?: number): void {
-    if (width) {this.options.width = width;}
-    if (height) {this.options.height = height;}
+    if (width) {
+      this.options.width = width;
+    }
+    if (height) {
+      this.options.height = height;
+    }
 
     if (this.svg) {
       this.svg.setAttribute('width', String(this.options.width));
@@ -322,7 +329,9 @@ export class Sparkline {
    * Get SVG element
    */
   getSVG(): SVGSVGElement {
-    if (!this.svg) {throw new Error('Sparkline not initialized');}
+    if (!this.svg) {
+      throw new Error('Sparkline not initialized');
+    }
     return this.svg;
   }
 
@@ -330,7 +339,9 @@ export class Sparkline {
    * Export as SVG string
    */
   toSVG(): string {
-    if (!this.svg) {throw new Error('Sparkline not initialized');}
+    if (!this.svg) {
+      throw new Error('Sparkline not initialized');
+    }
     return svgToString(this.svg);
   }
 
@@ -344,7 +355,13 @@ export class Sparkline {
   /**
    * Get data statistics
    */
-  getStats(): { min: number; max: number; first: number; last: number; trend: 'up' | 'down' | 'flat' } {
+  getStats(): {
+    min: number;
+    max: number;
+    first: number;
+    last: number;
+    trend: 'up' | 'down' | 'flat';
+  } {
     const data = this.options.data;
     if (data.length === 0) {
       return { min: 0, max: 0, first: 0, last: 0, trend: 'flat' };
@@ -356,8 +373,11 @@ export class Sparkline {
     const last = data[data.length - 1];
 
     let trend: 'up' | 'down' | 'flat' = 'flat';
-    if (last > first) {trend = 'up';}
-    else if (last < first) {trend = 'down';}
+    if (last > first) {
+      trend = 'up';
+    } else if (last < first) {
+      trend = 'down';
+    }
 
     return { min, max, first, last, trend };
   }

@@ -108,7 +108,9 @@ export class BarChart {
     // Get container element
     if (typeof container === 'string') {
       const el = document.querySelector(container);
-      if (!el) {throw new Error(`Container not found: ${container}`);}
+      if (!el) {
+        throw new Error(`Container not found: ${container}`);
+      }
       this.container = el as HTMLElement;
     } else {
       this.container = container;
@@ -128,7 +130,9 @@ export class BarChart {
   // Initialization
   // ==========================================================================
 
-  private mergeOptions(options: BarChartOptions): Required<Omit<BarChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] } {
+  private mergeOptions(
+    options: BarChartOptions
+  ): Required<Omit<BarChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] } {
     const merged = {
       ...DEFAULT_OPTIONS,
       ...options,
@@ -150,9 +154,11 @@ export class BarChart {
   }
 
   private normalizeData(data: DataPoint[] | DataSeries[]): DataSeries[] {
-    if (data.length === 0) {return [];}
+    if (data.length === 0) {
+      return [];
+    }
 
-    if ('data' in data[0] && Array.isArray((data[0]).data)) {
+    if ('data' in data[0] && Array.isArray(data[0].data)) {
       return data as DataSeries[];
     }
 
@@ -190,7 +196,9 @@ export class BarChart {
   }
 
   private createDefinitions(): void {
-    if (!this.svg) {return;}
+    if (!this.svg) {
+      return;
+    }
 
     this.defs = createDefs();
     this.svg.appendChild(this.defs);
@@ -233,7 +241,9 @@ export class BarChart {
   // ==========================================================================
 
   private render(): void {
-    if (!this.svg) {return;}
+    if (!this.svg) {
+      return;
+    }
 
     if (this.chartArea) {
       this.svg.removeChild(this.chartArea);
@@ -312,7 +322,9 @@ export class BarChart {
     categories: (string | number)[],
     isVertical: boolean
   ): void {
-    if (!this.chartArea) {return;}
+    if (!this.chartArea) {
+      return;
+    }
 
     const padding = this.options.padding as ChartPadding;
     const axisGroup = createGroup(
@@ -411,7 +423,9 @@ export class BarChart {
     bandwidth: number,
     isVertical: boolean
   ): void {
-    if (!this.chartArea) {return;}
+    if (!this.chartArea) {
+      return;
+    }
 
     const padding = this.options.padding as ChartPadding;
     const barsGroup = createGroup(
@@ -421,15 +435,15 @@ export class BarChart {
 
     const seriesCount = this.series.length;
     const isStacked = this.options.groupMode === 'stacked';
-    const barWidth = isStacked
-      ? bandwidth
-      : (bandwidth * (1 - this.options.barGap)) / seriesCount;
+    const barWidth = isStacked ? bandwidth : (bandwidth * (1 - this.options.barGap)) / seriesCount;
 
     // Track stacked values for each category
     const stackedValues: Map<string | number, number> = new Map();
 
     this.series.forEach((series, seriesIndex) => {
-      if (series.visible === false) {return;}
+      if (series.visible === false) {
+        return;
+      }
 
       const theme = series.theme || this.options.theme;
       const _color = series.color || getThemeColor(theme);
@@ -438,7 +452,7 @@ export class BarChart {
 
       series.data.forEach((point, pointIndex) => {
         const categoryPos = categoryScale(point.x as string | number);
-        const baseValue = isStacked ? (stackedValues.get(point.x as string | number) || 0) : 0;
+        const baseValue = isStacked ? stackedValues.get(point.x as string | number) || 0 : 0;
         const valuePos = valueScale(point.y + baseValue);
         const zeroPos = valueScale(baseValue);
 
@@ -447,7 +461,10 @@ export class BarChart {
         if (isVertical) {
           const barX = isStacked
             ? categoryPos - bandwidth / 2
-            : categoryPos - bandwidth / 2 + seriesIndex * barWidth + (bandwidth * this.options.barGap) / 2;
+            : categoryPos -
+              bandwidth / 2 +
+              seriesIndex * barWidth +
+              (bandwidth * this.options.barGap) / 2;
 
           x = barX;
           y = Math.min(valuePos, zeroPos);
@@ -456,7 +473,10 @@ export class BarChart {
         } else {
           const barY = isStacked
             ? categoryPos - bandwidth / 2
-            : categoryPos - bandwidth / 2 + seriesIndex * barWidth + (bandwidth * this.options.barGap) / 2;
+            : categoryPos -
+              bandwidth / 2 +
+              seriesIndex * barWidth +
+              (bandwidth * this.options.barGap) / 2;
 
           x = Math.min(valuePos, zeroPos);
           y = barY;
@@ -494,7 +514,8 @@ export class BarChart {
 
         // Add animation
         if (this.options.animate) {
-          const delay = this.options.animation.delay! + pointIndex * this.options.animation.stagger!;
+          const delay =
+            this.options.animation.delay! + pointIndex * this.options.animation.stagger!;
           if (isVertical) {
             rect.setAttribute('height', '0');
             rect.setAttribute('y', String(chartHeight));
@@ -555,7 +576,9 @@ export class BarChart {
   }
 
   private renderLegend(): void {
-    if (!this.svg) {return;}
+    if (!this.svg) {
+      return;
+    }
 
     const legendGroup = createGroup(`${this.options.classPrefix}__legend`);
     const itemSpacing = 100;
@@ -588,7 +611,9 @@ export class BarChart {
   }
 
   private renderScanlines(): void {
-    if (!this.svg) {return;}
+    if (!this.svg) {
+      return;
+    }
 
     const scanlineRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     scanlineRect.setAttribute('x', '0');
@@ -626,7 +651,9 @@ export class BarChart {
   }
 
   private showTooltip(content: string, x: number, y: number): void {
-    if (!this.tooltipElement) {return;}
+    if (!this.tooltipElement) {
+      return;
+    }
 
     this.tooltipElement.innerHTML = content;
     this.tooltipElement.style.opacity = '1';
@@ -637,7 +664,9 @@ export class BarChart {
   }
 
   private hideTooltip(): void {
-    if (!this.tooltipElement) {return;}
+    if (!this.tooltipElement) {
+      return;
+    }
     this.tooltipElement.style.opacity = '0';
   }
 
@@ -718,8 +747,12 @@ export class BarChart {
   }
 
   resize(width?: number, height?: number): void {
-    if (width) {this.options.width = width;}
-    if (height) {this.options.height = height;}
+    if (width) {
+      this.options.width = width;
+    }
+    if (height) {
+      this.options.height = height;
+    }
 
     if (this.svg) {
       this.svg.setAttribute('width', String(this.options.width));
@@ -728,7 +761,11 @@ export class BarChart {
     }
 
     this.render();
-    this.emit('resize', { type: 'resize', target: null, data: { width: this.options.width, height: this.options.height } });
+    this.emit('resize', {
+      type: 'resize',
+      target: null,
+      data: { width: this.options.width, height: this.options.height },
+    });
   }
 
   destroy(): void {
@@ -749,12 +786,16 @@ export class BarChart {
   }
 
   getSVG(): SVGSVGElement {
-    if (!this.svg) {throw new Error('Chart not initialized');}
+    if (!this.svg) {
+      throw new Error('Chart not initialized');
+    }
     return this.svg;
   }
 
   toSVG(): string {
-    if (!this.svg) {throw new Error('Chart not initialized');}
+    if (!this.svg) {
+      throw new Error('Chart not initialized');
+    }
     return svgToString(this.svg);
   }
 

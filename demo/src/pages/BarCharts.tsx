@@ -73,13 +73,7 @@ const MockBarChart = ({
                 rx="2"
               >
                 {animated && (
-                  <animate
-                    attributeName="width"
-                    from="0"
-                    to={barWidth}
-                    dur="1s"
-                    fill="freeze"
-                  />
+                  <animate attributeName="width" from="0" to={barWidth} dur="1s" fill="freeze" />
                 )}
               </rect>
 
@@ -162,13 +156,7 @@ const MockBarChart = ({
               rx="2"
             >
               {animated && (
-                <animate
-                  attributeName="height"
-                  from="0"
-                  to={barHeight}
-                  dur="0.8s"
-                  fill="freeze"
-                />
+                <animate attributeName="height" from="0" to={barHeight} dur="0.8s" fill="freeze" />
               )}
               {animated && (
                 <animate
@@ -182,13 +170,7 @@ const MockBarChart = ({
             </rect>
 
             {/* Top glow line */}
-            <rect
-              x={x}
-              y={y}
-              width={barWidth}
-              height="3"
-              fill={colorVar}
-            />
+            <rect x={x} y={y} width={barWidth} height="3" fill={colorVar} />
 
             {/* Label */}
             <text
@@ -307,17 +289,35 @@ const GroupedBarChart = () => {
       {/* Legend */}
       <g transform="translate(50, 10)">
         <rect x="0" y="0" width="12" height="12" fill={colors[0]} rx="2" />
-        <text x="18" y="10" fill="var(--cyber-chrome-300)" fontSize="9" fontFamily="var(--font-mono)">
+        <text
+          x="18"
+          y="10"
+          fill="var(--cyber-chrome-300)"
+          fontSize="9"
+          fontFamily="var(--font-mono)"
+        >
           Revenue
         </text>
 
         <rect x="80" y="0" width="12" height="12" fill={colors[1]} rx="2" />
-        <text x="98" y="10" fill="var(--cyber-chrome-300)" fontSize="9" fontFamily="var(--font-mono)">
+        <text
+          x="98"
+          y="10"
+          fill="var(--cyber-chrome-300)"
+          fontSize="9"
+          fontFamily="var(--font-mono)"
+        >
           Costs
         </text>
 
         <rect x="150" y="0" width="12" height="12" fill={colors[2]} rx="2" />
-        <text x="168" y="10" fill="var(--cyber-chrome-300)" fontSize="9" fontFamily="var(--font-mono)">
+        <text
+          x="168"
+          y="10"
+          fill="var(--cyber-chrome-300)"
+          fontSize="9"
+          fontFamily="var(--font-mono)"
+        >
           Profit
         </text>
       </g>
@@ -343,7 +343,9 @@ const horizontalData = [
 ];
 
 function BarCharts() {
-  const [activeVariant, setActiveVariant] = useState<'vertical' | 'horizontal' | 'grouped' | 'animated'>('vertical');
+  const [activeVariant, setActiveVariant] = useState<
+    'vertical' | 'horizontal' | 'grouped' | 'animated'
+  >('vertical');
 
   return (
     <div className="cyber-container">

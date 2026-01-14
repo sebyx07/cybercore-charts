@@ -73,10 +73,7 @@ export function createSVGRoot(
 /**
  * Create a group element
  */
-export function createGroup(
-  className?: string,
-  transform?: string
-): SVGGElement {
+export function createGroup(className?: string, transform?: string): SVGGElement {
   return createSVGElement('g', {
     class: className,
     transform,
@@ -91,7 +88,9 @@ export function createGroup(
  * Convert points to a linear path string
  */
 export function pointsToPath(points: Point[], close: boolean = false): string {
-  if (points.length === 0) {return '';}
+  if (points.length === 0) {
+    return '';
+  }
 
   const first = points[0];
   let path = `M ${first.x} ${first.y}`;
@@ -159,7 +158,9 @@ export function createAreaPath(
     className?: string;
   } = {}
 ): SVGPathElement {
-  if (points.length === 0) {return createPath('');}
+  if (points.length === 0) {
+    return createPath('');
+  }
 
   const { fill = 'currentColor', opacity = 0.3, className } = options;
   const firstPoint = points[0];
@@ -659,10 +660,7 @@ export function svgToString(svg: SVGElement): string {
 /**
  * Create a clip path
  */
-export function createClipPath(
-  id: string,
-  shape: SVGElement
-): SVGClipPathElement {
+export function createClipPath(id: string, shape: SVGElement): SVGClipPathElement {
   const clipPath = createSVGElement('clipPath', { id });
   clipPath.appendChild(shape);
   return clipPath;
@@ -671,10 +669,7 @@ export function createClipPath(
 /**
  * Create a mask
  */
-export function createMask(
-  id: string,
-  content: SVGElement
-): SVGMaskElement {
+export function createMask(id: string, content: SVGElement): SVGMaskElement {
   const mask = createSVGElement('mask', { id });
   mask.appendChild(content);
   return mask;

@@ -139,7 +139,14 @@ const DonutChart = ({ data, showLegend = true, animated = false }: DonutChartPro
   let currentOffset = 0;
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-lg)', justifyContent: 'center' }}>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 'var(--space-lg)',
+        justifyContent: 'center',
+      }}
+    >
       <svg viewBox={`0 0 ${size} ${size}`} style={{ width: '180px', height: '180px' }}>
         <defs>
           <filter id="donutGlow">
@@ -349,7 +356,9 @@ const threatData = [
 ];
 
 function RadialCharts() {
-  const [activeVariant, setActiveVariant] = useState<'gauge' | 'donut' | 'progress' | 'dashboard'>('gauge');
+  const [activeVariant, setActiveVariant] = useState<'gauge' | 'donut' | 'progress' | 'dashboard'>(
+    'gauge'
+  );
 
   return (
     <div className="cyber-container">
@@ -433,7 +442,14 @@ function RadialCharts() {
       {activeVariant === 'progress' && (
         <div className="cyber-grid cyber-grid--2">
           <ChartDemo title="Size Variants" badge="SIZES">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-lg)' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 'var(--space-lg)',
+              }}
+            >
               <RadialProgress value={65} size="sm" color="cyan" />
               <RadialProgress value={78} size="md" color="magenta" />
               <RadialProgress value={92} size="lg" color="green" />
@@ -441,7 +457,14 @@ function RadialCharts() {
           </ChartDemo>
 
           <ChartDemo title="Color Variants" badge="COLORS">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-lg)' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 'var(--space-lg)',
+              }}
+            >
               <RadialProgress value={75} size="md" color="cyan" />
               <RadialProgress value={60} size="md" color="magenta" />
               <RadialProgress value={45} size="md" color="yellow" />
@@ -450,18 +473,44 @@ function RadialCharts() {
           </ChartDemo>
 
           <ChartDemo title="Upload Progress" badge="UPLOAD">
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-md)' }}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 'var(--space-md)',
+              }}
+            >
               <RadialProgress value={67} size="lg" color="cyan" />
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)', color: 'var(--cyber-chrome-400)' }}>
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 'var(--text-sm)',
+                  color: 'var(--cyber-chrome-400)',
+                }}
+              >
                 Uploading data.tar.gz...
               </span>
             </div>
           </ChartDemo>
 
           <ChartDemo title="Security Scan" badge="SCANNING">
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-md)' }}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 'var(--space-md)',
+              }}
+            >
               <RadialProgress value={34} size="lg" color="magenta" />
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)', color: 'var(--cyber-chrome-400)' }}>
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 'var(--text-sm)',
+                  color: 'var(--cyber-chrome-400)',
+                }}
+              >
                 Analyzing threat vectors...
               </span>
             </div>
@@ -496,42 +545,114 @@ function RadialCharts() {
 
           <div className="cyber-grid cyber-grid--2">
             <div>
-              <h4 style={{ color: 'var(--cyber-cyan-500)', marginBottom: 'var(--space-md)', fontFamily: 'var(--font-display)' }}>
+              <h4
+                style={{
+                  color: 'var(--cyber-cyan-500)',
+                  marginBottom: 'var(--space-md)',
+                  fontFamily: 'var(--font-display)',
+                }}
+              >
                 Process Distribution
               </h4>
               <DonutChart data={donutData} />
             </div>
             <div>
-              <h4 style={{ color: 'var(--cyber-cyan-500)', marginBottom: 'var(--space-md)', fontFamily: 'var(--font-display)' }}>
+              <h4
+                style={{
+                  color: 'var(--cyber-cyan-500)',
+                  marginBottom: 'var(--space-md)',
+                  fontFamily: 'var(--font-display)',
+                }}
+              >
                 Quick Stats
               </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--space-md)' }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: 'var(--space-md)',
+                }}
+              >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                   <RadialProgress value={88} size="sm" color="green" />
                   <div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--cyber-chrome-400)' }}>Uptime</div>
-                    <div style={{ fontFamily: 'var(--font-heading)', color: 'var(--cyber-green-500)' }}>99.9%</div>
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 'var(--text-xs)',
+                        color: 'var(--cyber-chrome-400)',
+                      }}
+                    >
+                      Uptime
+                    </div>
+                    <div
+                      style={{ fontFamily: 'var(--font-heading)', color: 'var(--cyber-green-500)' }}
+                    >
+                      99.9%
+                    </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                   <RadialProgress value={65} size="sm" color="cyan" />
                   <div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--cyber-chrome-400)' }}>Cache Hit</div>
-                    <div style={{ fontFamily: 'var(--font-heading)', color: 'var(--cyber-cyan-500)' }}>65%</div>
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 'var(--text-xs)',
+                        color: 'var(--cyber-chrome-400)',
+                      }}
+                    >
+                      Cache Hit
+                    </div>
+                    <div
+                      style={{ fontFamily: 'var(--font-heading)', color: 'var(--cyber-cyan-500)' }}
+                    >
+                      65%
+                    </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                   <RadialProgress value={42} size="sm" color="yellow" />
                   <div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--cyber-chrome-400)' }}>Queue</div>
-                    <div style={{ fontFamily: 'var(--font-heading)', color: 'var(--cyber-yellow-500)' }}>42%</div>
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 'var(--text-xs)',
+                        color: 'var(--cyber-chrome-400)',
+                      }}
+                    >
+                      Queue
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-heading)',
+                        color: 'var(--cyber-yellow-500)',
+                      }}
+                    >
+                      42%
+                    </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                   <RadialProgress value={15} size="sm" color="magenta" />
                   <div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--cyber-chrome-400)' }}>Errors</div>
-                    <div style={{ fontFamily: 'var(--font-heading)', color: 'var(--cyber-magenta-500)' }}>0.15%</div>
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 'var(--text-xs)',
+                        color: 'var(--cyber-chrome-400)',
+                      }}
+                    >
+                      Errors
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-heading)',
+                        color: 'var(--cyber-magenta-500)',
+                      }}
+                    >
+                      0.15%
+                    </div>
                   </div>
                 </div>
               </div>

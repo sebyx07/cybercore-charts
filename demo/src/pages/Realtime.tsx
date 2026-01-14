@@ -370,8 +370,16 @@ const HeartbeatChart = ({ paused = false }: { paused?: boolean }) => {
 
 // Network activity sparklines
 const NetworkSparklines = ({ paused = false }: { paused?: boolean }) => {
-  const [inbound, setInbound] = useState<number[]>(Array(30).fill(0).map(() => Math.random() * 50));
-  const [outbound, setOutbound] = useState<number[]>(Array(30).fill(0).map(() => Math.random() * 30));
+  const [inbound, setInbound] = useState<number[]>(
+    Array(30)
+      .fill(0)
+      .map(() => Math.random() * 50)
+  );
+  const [outbound, setOutbound] = useState<number[]>(
+    Array(30)
+      .fill(0)
+      .map(() => Math.random() * 30)
+  );
 
   useEffect(() => {
     if (paused) return;
@@ -400,10 +408,22 @@ const NetworkSparklines = ({ paused = false }: { paused?: boolean }) => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
         <div style={{ width: '80px' }}>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--cyber-chrome-500)' }}>
+          <div
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-xs)',
+              color: 'var(--cyber-chrome-500)',
+            }}
+          >
             INBOUND
           </div>
-          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-lg)', color: 'var(--cyber-cyan-500)' }}>
+          <div
+            style={{
+              fontFamily: 'var(--font-heading)',
+              fontSize: 'var(--text-lg)',
+              color: 'var(--cyber-cyan-500)',
+            }}
+          >
             {inbound[inbound.length - 1].toFixed(1)} MB/s
           </div>
         </div>
@@ -420,10 +440,22 @@ const NetworkSparklines = ({ paused = false }: { paused?: boolean }) => {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
         <div style={{ width: '80px' }}>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--cyber-chrome-500)' }}>
+          <div
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-xs)',
+              color: 'var(--cyber-chrome-500)',
+            }}
+          >
             OUTBOUND
           </div>
-          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-lg)', color: 'var(--cyber-green-500)' }}>
+          <div
+            style={{
+              fontFamily: 'var(--font-heading)',
+              fontSize: 'var(--text-lg)',
+              color: 'var(--cyber-green-500)',
+            }}
+          >
             {outbound[outbound.length - 1].toFixed(1)} MB/s
           </div>
         </div>
@@ -448,22 +480,42 @@ function Realtime() {
     <div className="cyber-container">
       <div className="page-header">
         <h1 className="page-header__title">Real-time Charts</h1>
-        <p className="page-header__subtitle">
-          Live streaming charts for monitoring and dashboards
-        </p>
+        <p className="page-header__subtitle">Live streaming charts for monitoring and dashboards</p>
       </div>
 
       {/* Control Panel */}
       <div className="cyber-card cyber-mb-lg">
         <div className="cyber-flex cyber-items-center cyber-justify-between">
           <div className="cyber-flex cyber-items-center cyber-gap-md">
-            <div className={`cyber-status ${isPaused ? '' : ''}`} style={{ borderColor: isPaused ? 'var(--cyber-yellow-500)' : 'var(--cyber-green-500)', background: isPaused ? 'color-mix(in srgb, var(--cyber-yellow-500) 15%, transparent)' : '' }}>
-              <span className="cyber-status__dot" style={{ background: isPaused ? 'var(--cyber-yellow-500)' : 'var(--cyber-green-500)', animation: isPaused ? 'none' : 'pulse-glow 2s infinite' }} />
-              <span style={{ color: isPaused ? 'var(--cyber-yellow-500)' : 'var(--cyber-green-500)' }}>
+            <div
+              className={`cyber-status ${isPaused ? '' : ''}`}
+              style={{
+                borderColor: isPaused ? 'var(--cyber-yellow-500)' : 'var(--cyber-green-500)',
+                background: isPaused
+                  ? 'color-mix(in srgb, var(--cyber-yellow-500) 15%, transparent)'
+                  : '',
+              }}
+            >
+              <span
+                className="cyber-status__dot"
+                style={{
+                  background: isPaused ? 'var(--cyber-yellow-500)' : 'var(--cyber-green-500)',
+                  animation: isPaused ? 'none' : 'pulse-glow 2s infinite',
+                }}
+              />
+              <span
+                style={{ color: isPaused ? 'var(--cyber-yellow-500)' : 'var(--cyber-green-500)' }}
+              >
                 {isPaused ? 'PAUSED' : 'STREAMING'}
               </span>
             </div>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--cyber-chrome-500)' }}>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 'var(--text-xs)',
+                color: 'var(--cyber-chrome-500)',
+              }}
+            >
               Update rate: 100ms
             </span>
           </div>

@@ -5,9 +5,9 @@ code in this repository.
 
 ## Project Overview
 
-CYBERCORE CHARTS is a zero-dependency SVG chart library with cyberpunk aesthetics.
-Pure TypeScript with no runtime dependencies - generates standalone SVG elements
-that can be embedded anywhere.
+CYBERCORE CHARTS is a zero-dependency SVG chart library with cyberpunk
+aesthetics. Pure TypeScript with no runtime dependencies - generates standalone
+SVG elements that can be embedded anywhere.
 
 ## Commands
 
