@@ -320,7 +320,7 @@ export class LineChart {
       const xMin = this.options.xAxis.min ?? Math.min(...(allXValues as number[]));
       const xMax = this.options.xAxis.max ?? Math.max(...(allXValues as number[]));
       const linearXScale = createLinearScale(xMin, xMax, 0, chartWidth);
-      xScale = linearXScale;
+      xScale = (value: string | number) => linearXScale(value as number);
     } else {
       const bandScale = createBandScale(allXValues, 0, chartWidth, 0.1);
       xScale = (value) => bandScale.scale(value) + bandScale.bandwidth / 2;

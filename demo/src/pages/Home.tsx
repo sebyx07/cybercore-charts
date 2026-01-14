@@ -190,10 +190,18 @@ function Home() {
         <p className="cyber-hero__subtitle">[ Data Visualization System v1.0 ]</p>
         <h1 className="cyber-hero__title cyber-text-glow">CYBERCORE CHARTS</h1>
         <p className="cyber-hero__description">
-          A cyberpunk-themed charting library for building futuristic data visualizations.
-          Neon glows, scanline effects, real-time streaming, and more.
+          Built by AI, for AI. Zero-dependency SVG charts with neon aesthetics.
+          Perfect for AI-powered dashboards and data visualization.
         </p>
         <div className="cyber-hero__actions">
+          <a
+            href="/cybercore-charts/llm.txt"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="cyber-btn cyber-btn--lg cyber-flex cyber-items-center cyber-gap-sm"
+          >
+            📄 llm.txt
+          </a>
           <Link to="/line-charts" className="cyber-btn cyber-btn--filled cyber-btn--lg">
             View Charts
           </Link>

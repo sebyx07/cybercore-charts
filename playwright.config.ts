@@ -95,6 +95,8 @@ export default defineConfig({
 
   // Snapshot comparison settings
   expect: {
+    // Global expectation timeout
+    timeout: 10000,
     toHaveScreenshot: {
       // Allow slight pixel differences (anti-aliasing, etc.)
       maxDiffPixels: 100,
@@ -111,13 +113,6 @@ export default defineConfig({
 
   // Global timeout settings
   timeout: 30000,
-  expect: {
-    timeout: 10000,
-    toHaveScreenshot: {
-      maxDiffPixels: 100,
-      threshold: 0.2,
-    },
-  },
 
   // Output directory for test artifacts
   outputDir: './test-results/',

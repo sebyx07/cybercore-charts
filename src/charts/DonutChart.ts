@@ -222,10 +222,10 @@ export class DonutChart {
     const centerX = chartWidth / 2;
     const centerY = this.options.height / 2;
     const padding = Math.max(
-      this.options.padding.top,
-      this.options.padding.right,
-      this.options.padding.bottom,
-      this.options.padding.left
+      this.options.padding.top!,
+      this.options.padding.right!,
+      this.options.padding.bottom!,
+      this.options.padding.left!
     );
     const outerRadius = Math.min(centerX, centerY) - padding - (this.options.showLabels ? 30 : 0);
     const innerRadius = outerRadius * this.options.innerRadius;

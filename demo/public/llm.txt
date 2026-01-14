@@ -1,6 +1,6 @@
-# cybercore-charts
+# CYBERCORE CHARTS
 
-> Zero-dependency cyberpunk SVG chart library with neon glows and dark themes
+Zero-dependency cyberpunk SVG chart library. No external dependencies. AI-optimized.
 
 ## Installation
 
@@ -386,3 +386,13 @@ const svgString = chart.toSVG();  // Pure SVG string for SSR
 ## Browser Support
 
 Chrome 88+, Firefox 85+, Safari 14+, Edge 88+
+
+## Related
+
+- **CYBERCORE CSS** - Companion CSS framework: github.com/sebyx07/cybercore-css
+
+## Links
+
+- GitHub: github.com/sebyx07/cybercore-charts
+- Demo: sebyx07.github.io/cybercore-charts
+- NPM: npmjs.com/package/cybercore-charts
