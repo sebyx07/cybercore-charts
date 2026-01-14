@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import ChartDemo from '../components/ChartDemo';
+import CodeBlock from '../components/CodeBlock';
 
 // Gauge Chart Component
 interface GaugeChartProps {
@@ -548,44 +549,277 @@ function RadialCharts() {
           <p className="cyber-section__subtitle">How to use radial charts in your project</p>
         </div>
 
-        <div className="cyber-card">
-          <pre
-            style={{
-              background: 'var(--cyber-void-500)',
-              padding: 'var(--space-md)',
-              borderRadius: 'var(--radius-md)',
-              overflow: 'auto',
-            }}
-          >
-            <code style={{ fontFamily: 'var(--font-mono)', color: 'var(--cyber-chrome-200)' }}>
-              {`import { GaugeChart, DonutChart, RadialProgress } from 'cybercore-charts';
+        <div className="cyber-grid cyber-grid--1">
+          {/* Vanilla JS Example */}
+          <div className="cyber-card">
+            <h3
+              style={{
+                color: 'var(--cyber-cyan-500)',
+                marginBottom: 'var(--space-md)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              Vanilla JavaScript
+            </h3>
+            <CodeBlock
+              code={`// Import the library
+import { GaugeChart, DonutChart, RadialProgress } from 'cybercore-charts';
 
-// Gauge chart
-<GaugeChart
-  value={72}
-  max={100}
-  label="CPU USAGE"
-  color="cyan"
-/>
+// Create a gauge chart
+const cpuGauge = new GaugeChart('#cpu-gauge', {
+  value: 72,
+  max: 100,
+  label: 'CPU USAGE',
+  color: 'cyan',
+  animated: true,
+});
 
-// Donut chart
-<DonutChart
-  data={[
+// Create a donut chart
+const statusDonut = new DonutChart('#status-chart', {
+  data: [
     { label: 'Active', value: 45, color: 'cyan' },
     { label: 'Pending', value: 25, color: 'yellow' },
     { label: 'Error', value: 15, color: 'magenta' },
-  ]}
-  showLegend={true}
-/>
+    { label: 'Offline', value: 15, color: 'chrome' },
+  ],
+  showLegend: true,
+  showTotal: true,
+  animated: true,
+});
 
-// Radial progress
-<RadialProgress
-  value={78}
-  size="lg"
-  color="green"
-/>`}
-            </code>
-          </pre>
+// Create a radial progress indicator
+const uploadProgress = new RadialProgress('#upload-progress', {
+  value: 67,
+  size: 'lg',
+  color: 'green',
+});
+
+// Update values dynamically
+cpuGauge.setValue(85);
+uploadProgress.setValue(100);`}
+              language="javascript"
+              title="vanilla-js.js"
+            />
+          </div>
+
+          {/* React Example */}
+          <div className="cyber-card">
+            <h3
+              style={{
+                color: 'var(--cyber-magenta-500)',
+                marginBottom: 'var(--space-md)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              React Component
+            </h3>
+            <CodeBlock
+              code={`import { GaugeChart, DonutChart, RadialProgress } from 'cybercore-charts/react';
+
+function SystemDashboard() {
+  const [cpuUsage, setCpuUsage] = useState(72);
+  const [memoryUsage, setMemoryUsage] = useState(85);
+
+  const statusData = [
+    { label: 'Active', value: 45, color: 'cyan' },
+    { label: 'Pending', value: 25, color: 'yellow' },
+    { label: 'Error', value: 15, color: 'magenta' },
+    { label: 'Offline', value: 15, color: 'chrome' },
+  ];
+
+  return (
+    <div className="system-dashboard">
+      {/* Gauge charts for system metrics */}
+      <div className="metrics-row">
+        <GaugeChart
+          value={cpuUsage}
+          max={100}
+          label="CPU USAGE"
+          color="cyan"
+          animated={true}
+        />
+        <GaugeChart
+          value={memoryUsage}
+          max={100}
+          label="MEMORY"
+          color="magenta"
+          thresholds={[
+            { value: 60, color: 'yellow' },
+            { value: 80, color: 'magenta' },
+          ]}
+        />
+      </div>
+
+      {/* Donut chart for status distribution */}
+      <DonutChart
+        data={statusData}
+        showLegend={true}
+        showTotal={true}
+        centerLabel="NODES"
+        animated={true}
+      />
+
+      {/* Radial progress indicators */}
+      <div className="progress-indicators">
+        <RadialProgress value={88} size="sm" color="green" />
+        <RadialProgress value={65} size="md" color="cyan" />
+        <RadialProgress value={42} size="lg" color="yellow" />
+      </div>
+    </div>
+  );
+}`}
+              language="tsx"
+              title="SystemDashboard.tsx"
+            />
+          </div>
+
+          {/* Configuration Options */}
+          <div className="cyber-card">
+            <h3
+              style={{
+                color: 'var(--cyber-yellow-500)',
+                marginBottom: 'var(--space-md)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              Configuration Options
+            </h3>
+            <CodeBlock
+              code={`// Gauge Chart Options
+interface GaugeChartOptions {
+  value: number;                       // Current value
+  max?: number;                        // Maximum value (default: 100)
+  min?: number;                        // Minimum value (default: 0)
+  label?: string;                      // Bottom label text
+  color?: 'cyan' | 'magenta' | 'yellow' | 'green';
+  showValue?: boolean;                 // Display value in center (default: true)
+  valueFormat?: (value: number) => string;  // Custom value formatter
+  animated?: boolean;                  // Enable animations (default: false)
+  thresholds?: Threshold[];            // Color thresholds
+  arcWidth?: number;                   // Arc thickness (default: 12)
+  startAngle?: number;                 // Start angle in degrees (default: -90)
+  endAngle?: number;                   // End angle in degrees (default: 90)
+}
+
+// Donut Chart Options
+interface DonutChartOptions {
+  data: DonutSegment[];                // Segment data
+  showLegend?: boolean;                // Show legend (default: true)
+  legendPosition?: 'right' | 'bottom';
+  showTotal?: boolean;                 // Show total in center (default: true)
+  centerLabel?: string;                // Center label text
+  animated?: boolean;                  // Enable animations (default: false)
+  innerRadius?: number;                // Inner radius ratio 0-1 (default: 0.6)
+  padAngle?: number;                   // Gap between segments (default: 0.02)
+  cornerRadius?: number;               // Segment corner radius (default: 2)
+}
+
+// Radial Progress Options
+interface RadialProgressOptions {
+  value: number;                       // Progress value 0-100
+  max?: number;                        // Maximum value (default: 100)
+  size?: 'sm' | 'md' | 'lg';          // Predefined sizes
+  color?: 'cyan' | 'magenta' | 'yellow' | 'green';
+  strokeWidth?: number;                // Ring thickness
+  showValue?: boolean;                 // Display percentage (default: true)
+  animated?: boolean;                  // Enable animations (default: false)
+  trackColor?: string;                 // Background track color
+}
+
+interface DonutSegment {
+  label: string;
+  value: number;
+  color: 'cyan' | 'magenta' | 'yellow' | 'green' | 'chrome' | string;
+}
+
+interface Threshold {
+  value: number;
+  color: string;
+}`}
+              language="typescript"
+              title="types.d.ts"
+            />
+          </div>
+
+          {/* HTML Example */}
+          <div className="cyber-card">
+            <h3
+              style={{
+                color: 'var(--cyber-green-500)',
+                marginBottom: 'var(--space-md)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              HTML / CDN Usage
+            </h3>
+            <CodeBlock
+              code={`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cybercore Radial Charts</title>
+  <link rel="stylesheet" href="https://unpkg.com/cybercore-charts/dist/cybercore-charts.css">
+  <style>
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      padding: 20px;
+      background: #0a0a0f;
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <div id="cpu-gauge"></div>
+    <div id="memory-gauge"></div>
+    <div id="disk-gauge"></div>
+    <div id="network-gauge"></div>
+  </div>
+
+  <div id="status-donut" style="width: 400px; height: 250px;"></div>
+
+  <script src="https://unpkg.com/cybercore-charts/dist/cybercore-charts.umd.min.js"></script>
+  <script>
+    const { GaugeChart, DonutChart, RadialProgress } = CyberCharts;
+
+    // System metric gauges
+    const metrics = [
+      { id: '#cpu-gauge', value: 72, label: 'CPU', color: 'cyan' },
+      { id: '#memory-gauge', value: 85, label: 'MEMORY', color: 'magenta' },
+      { id: '#disk-gauge', value: 45, label: 'DISK', color: 'yellow' },
+      { id: '#network-gauge', value: 92, label: 'NETWORK', color: 'green' },
+    ];
+
+    metrics.forEach(({ id, value, label, color }) => {
+      new GaugeChart(id, {
+        value,
+        label,
+        color,
+        animated: true,
+        glow: true,
+      });
+    });
+
+    // Status distribution donut
+    new DonutChart('#status-donut', {
+      data: [
+        { label: 'Active', value: 45, color: 'cyan' },
+        { label: 'Pending', value: 25, color: 'yellow' },
+        { label: 'Error', value: 15, color: 'magenta' },
+        { label: 'Offline', value: 15, color: '#606078' },
+      ],
+      showLegend: true,
+      showTotal: true,
+      animated: true,
+    });
+  </script>
+</body>
+</html>`}
+              language="html"
+              title="index.html"
+            />
+          </div>
         </div>
       </section>
     </div>

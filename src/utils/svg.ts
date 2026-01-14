@@ -159,16 +159,19 @@ export function createAreaPath(
   if (points.length === 0) return createPath('');
 
   const { fill = 'currentColor', opacity = 0.3, className } = options;
+  const firstPoint = points[0]!;
+  const lastPoint = points[points.length - 1]!;
 
   // Create path: start at first point, draw line, then drop to baseline and back
-  let d = `M ${points[0].x} ${baselineY}`;
-  d += ` L ${points[0].x} ${points[0].y}`;
+  let d = `M ${firstPoint.x} ${baselineY}`;
+  d += ` L ${firstPoint.x} ${firstPoint.y}`;
 
   for (let i = 1; i < points.length; i++) {
-    d += ` L ${points[i].x} ${points[i].y}`;
+    const point = points[i]!;
+    d += ` L ${point.x} ${point.y}`;
   }
 
-  d += ` L ${points[points.length - 1].x} ${baselineY}`;
+  d += ` L ${lastPoint.x} ${baselineY}`;
   d += ' Z';
 
   return createSVGElement('path', {
@@ -466,7 +469,9 @@ export function createGlowFilter(
   config: GlowConfig = {}
 ): SVGFilterElement {
   const { intensity = 1, blur = 4 } = config;
-  const color = getGlowColor(theme);
+  // Color available for future enhancements (e.g., tinting the glow)
+  const _color = getGlowColor(theme);
+  void _color;
 
   const filter = createSVGElement('filter', {
     id,

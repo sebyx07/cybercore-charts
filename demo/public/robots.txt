@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sebyx07.github.io/cybercore-charts/sitemap.xml

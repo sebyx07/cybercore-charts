@@ -113,16 +113,5 @@ const CyberCharts = {
   VERSION,
 };
 
-// Export as default for UMD
+// Export as default for UMD (attaches to window.CyberCharts)
 export default CyberCharts;
-
-// Also export named for ES modules compatibility
-export {
-  createChart,
-  LineChart,
-  BarChart,
-  GaugeChart,
-  DonutChart,
-  Sparkline,
-  VERSION,
-};

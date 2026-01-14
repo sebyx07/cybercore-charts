@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import ChartDemo from '../components/ChartDemo';
+import CodeBlock from '../components/CodeBlock';
 
 // Mock bar chart component
 interface BarChartProps {
@@ -473,45 +474,256 @@ function BarCharts() {
           <p className="cyber-section__subtitle">How to use bar charts in your project</p>
         </div>
 
-        <div className="cyber-card">
-          <pre
-            style={{
-              background: 'var(--cyber-void-500)',
-              padding: 'var(--space-md)',
-              borderRadius: 'var(--radius-md)',
-              overflow: 'auto',
-            }}
-          >
-            <code style={{ fontFamily: 'var(--font-mono)', color: 'var(--cyber-chrome-200)' }}>
-              {`import { BarChart } from 'cybercore-charts';
+        <div className="cyber-grid cyber-grid--1">
+          {/* Vanilla JS Example */}
+          <div className="cyber-card">
+            <h3
+              style={{
+                color: 'var(--cyber-cyan-500)',
+                marginBottom: 'var(--space-md)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              Vanilla JavaScript
+            </h3>
+            <CodeBlock
+              code={`// Import the library
+import { BarChart } from 'cybercore-charts';
 
-// Vertical bar chart
-<BarChart
-  data={[
+// Get your container element
+const container = document.getElementById('chart-container');
+
+// Create a vertical bar chart
+const chart = new BarChart(container, {
+  data: [
     { label: 'Mon', value: 45 },
     { label: 'Tue', value: 60 },
     { label: 'Wed', value: 35 },
-  ]}
-  color="cyan"
-/>
+    { label: 'Thu', value: 80 },
+    { label: 'Fri', value: 55 },
+  ],
+  color: 'cyan',
+  animated: true,
+  showValues: true,
+});
 
-// Horizontal bar chart
-<BarChart
-  data={data}
-  color="magenta"
-  horizontal={true}
-  animated={true}
-/>
+// Create a horizontal bar chart
+const horizontalChart = new BarChart('#horizontal-chart', {
+  data: resourceData,
+  horizontal: true,
+  color: 'magenta',
+  barRadius: 4,
+});
 
-// Grouped bars
-<BarChart
-  data={groupedData}
-  variant="grouped"
-  colors={['cyan', 'magenta', 'green']}
-  showLegend={true}
-/>`}
-            </code>
-          </pre>
+// Update data dynamically
+chart.setData(newData);
+
+// Change orientation
+chart.setHorizontal(true);`}
+              language="javascript"
+              title="vanilla-js.js"
+            />
+          </div>
+
+          {/* React Example */}
+          <div className="cyber-card">
+            <h3
+              style={{
+                color: 'var(--cyber-magenta-500)',
+                marginBottom: 'var(--space-md)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              React Component
+            </h3>
+            <CodeBlock
+              code={`import { BarChart } from 'cybercore-charts/react';
+
+function Analytics() {
+  const weeklyData = [
+    { label: 'Mon', value: 45 },
+    { label: 'Tue', value: 60 },
+    { label: 'Wed', value: 35 },
+    { label: 'Thu', value: 80 },
+    { label: 'Fri', value: 55 },
+  ];
+
+  const resourceData = [
+    { label: 'CPU', value: 78 },
+    { label: 'Memory', value: 65 },
+    { label: 'Disk', value: 45 },
+    { label: 'Network', value: 92 },
+  ];
+
+  return (
+    <div className="analytics-dashboard">
+      {/* Vertical bar chart */}
+      <BarChart
+        data={weeklyData}
+        color="cyan"
+        showValues={true}
+        animated={true}
+      />
+
+      {/* Horizontal bar chart */}
+      <BarChart
+        data={resourceData}
+        color="magenta"
+        horizontal={true}
+        showBackground={true}
+      />
+
+      {/* Grouped bar chart */}
+      <BarChart
+        variant="grouped"
+        groups={[
+          { label: 'Q1', values: [45, 35, 55] },
+          { label: 'Q2', values: [60, 45, 40] },
+          { label: 'Q3', values: [35, 55, 65] },
+          { label: 'Q4', values: [70, 60, 50] },
+        ]}
+        colors={['cyan', 'magenta', 'green']}
+        legend={['Revenue', 'Costs', 'Profit']}
+        showLegend={true}
+      />
+    </div>
+  );
+}`}
+              language="tsx"
+              title="Analytics.tsx"
+            />
+          </div>
+
+          {/* Configuration Options */}
+          <div className="cyber-card">
+            <h3
+              style={{
+                color: 'var(--cyber-yellow-500)',
+                marginBottom: 'var(--space-md)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              Configuration Options
+            </h3>
+            <CodeBlock
+              code={`interface BarChartOptions {
+  // Data
+  data?: BarDataPoint[];              // Single series data
+  groups?: GroupedData[];             // Grouped bar data
+  variant?: 'single' | 'grouped' | 'stacked';
+
+  // Appearance
+  color?: 'cyan' | 'magenta' | 'yellow' | 'green';
+  colors?: string[];                  // Colors for grouped/stacked bars
+  horizontal?: boolean;               // Horizontal orientation (default: false)
+  showValues?: boolean;               // Display values on bars (default: true)
+  showBackground?: boolean;           // Show bar track background (default: false)
+  barRadius?: number;                 // Bar corner radius (default: 2)
+  barSpacing?: number;                // Gap between bars (default: 15)
+  barWidth?: number | 'auto';         // Fixed or auto bar width
+
+  // Animation
+  animated?: boolean;                 // Enable animations (default: false)
+  animationDuration?: number;         // Animation duration in ms (default: 800)
+  animationDelay?: number;            // Stagger delay per bar (default: 50)
+
+  // Dimensions
+  width?: number | 'auto';            // Chart width (default: 'auto')
+  height?: number;                    // Chart height (default: 200)
+
+  // Grid & Axis
+  showGrid?: boolean;                 // Show background grid (default: true)
+  showXAxis?: boolean;                // Show X axis labels (default: true)
+  showYAxis?: boolean;                // Show Y axis labels (default: false)
+
+  // Legend (for grouped/stacked)
+  showLegend?: boolean;               // Show legend (default: false)
+  legend?: string[];                  // Legend labels
+  legendPosition?: 'top' | 'bottom' | 'right';
+
+  // Theming
+  glow?: boolean;                     // Neon glow effect (default: true)
+  gradient?: boolean;                 // Use gradient fill (default: true)
+}
+
+interface BarDataPoint {
+  label: string;
+  value: number;
+  color?: string;                     // Override color per bar
+}
+
+interface GroupedData {
+  label: string;
+  values: number[];
+}`}
+              language="typescript"
+              title="types.d.ts"
+            />
+          </div>
+
+          {/* HTML Example */}
+          <div className="cyber-card">
+            <h3
+              style={{
+                color: 'var(--cyber-green-500)',
+                marginBottom: 'var(--space-md)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              HTML / CDN Usage
+            </h3>
+            <CodeBlock
+              code={`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cybercore Bar Charts</title>
+  <link rel="stylesheet" href="https://unpkg.com/cybercore-charts/dist/cybercore-charts.css">
+</head>
+<body>
+  <!-- Vertical bar chart -->
+  <div id="vertical-chart" style="width: 500px; height: 300px;"></div>
+
+  <!-- Horizontal bar chart -->
+  <div id="horizontal-chart" style="width: 500px; height: 250px;"></div>
+
+  <script src="https://unpkg.com/cybercore-charts/dist/cybercore-charts.umd.min.js"></script>
+  <script>
+    const { BarChart } = CyberCharts;
+
+    // Vertical bar chart
+    new BarChart('#vertical-chart', {
+      data: [
+        { label: 'Mon', value: 45 },
+        { label: 'Tue', value: 60 },
+        { label: 'Wed', value: 35 },
+        { label: 'Thu', value: 80 },
+        { label: 'Fri', value: 55 },
+      ],
+      color: 'cyan',
+      animated: true,
+      glow: true,
+    });
+
+    // Horizontal resource chart
+    new BarChart('#horizontal-chart', {
+      data: [
+        { label: 'CPU', value: 78 },
+        { label: 'Memory', value: 65 },
+        { label: 'Disk', value: 45 },
+        { label: 'Network', value: 92 },
+      ],
+      horizontal: true,
+      color: 'magenta',
+      showBackground: true,
+    });
+  </script>
+</body>
+</html>`}
+              language="html"
+              title="index.html"
+            />
+          </div>
         </div>
       </section>
     </div>

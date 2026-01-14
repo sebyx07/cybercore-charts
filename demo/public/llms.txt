@@ -1,0 +1,388 @@
+# cybercore-charts
+
+> Zero-dependency cyberpunk SVG chart library with neon glows and dark themes
+
+## Installation
+
+```bash
+npm install cybercore-charts
+```
+
+## Quick Start
+
+```javascript
+import { createChart } from 'cybercore-charts';
+
+const chart = createChart('line', '#chart', {
+  data: [
+    { x: 'Jan', y: 10 },
+    { x: 'Feb', y: 25 },
+    { x: 'Mar', y: 15 },
+  ],
+  theme: 'cyan',
+  glow: true,
+});
+
+// Update data
+chart.update(newData);
+
+// Cleanup
+chart.destroy();
+```
+
+## API Reference
+
+### createChart(type, container, options)
+
+Factory function for creating charts. Recommended for vanilla JavaScript.
+
+**Parameters:**
+- `type`: `'line' | 'bar' | 'gauge' | 'donut' | 'sparkline'`
+- `container`: HTMLElement or CSS selector string (e.g., `'#chart'`)
+- `options`: Chart-specific options object
+
+**Returns:** Chart instance with `update()`, `resize()`, `destroy()`, `getSVG()`, `toSVG()`, `on()`, `off()` methods
+
+### LineChart
+
+```javascript
+import { LineChart } from 'cybercore-charts';
+
+const chart = new LineChart('#container', {
+  data: [{ x: 0, y: 10 }, { x: 1, y: 25 }, { x: 2, y: 15 }],
+  width: 600,
+  height: 400,
+  theme: 'cyan',              // 'cyan' | 'magenta' | 'green' | 'yellow'
+  showArea: true,             // Fill area under line
+  areaOpacity: 0.2,           // Area fill opacity (0-1)
+  showPoints: true,           // Show data points
+  pointRadius: 4,             // Point size
+  lineWidth: 2,               // Line stroke width
+  interpolation: 'smooth',    // 'linear' | 'smooth' | 'step' | 'stepBefore' | 'stepAfter'
+  glow: true,                 // Enable neon glow effect
+  scanlines: false,           // CRT scanlines overlay
+  animate: true,              // Enable animations
+  xAxis: { show: true, showGrid: true, showLabels: true, ticks: 5 },
+  yAxis: { show: true, showGrid: true, showLabels: true, ticks: 5, min: 0, max: 100 },
+  legend: { show: true, position: 'top' },
+  tooltip: { enabled: true },
+  responsive: false,          // Auto-resize on container resize
+});
+```
+
+**Multi-series data:**
+```javascript
+const chart = new LineChart('#container', {
+  data: [
+    { id: 'series-1', name: 'Downloads', data: [{ x: 'Jan', y: 100 }, { x: 'Feb', y: 150 }], theme: 'cyan' },
+    { id: 'series-2', name: 'Uploads', data: [{ x: 'Jan', y: 80 }, { x: 'Feb', y: 120 }], theme: 'magenta' },
+  ],
+});
+```
+
+### BarChart
+
+```javascript
+import { BarChart } from 'cybercore-charts';
+
+const chart = new BarChart('#container', {
+  data: [
+    { x: 'Alpha', y: 45 },
+    { x: 'Beta', y: 72 },
+    { x: 'Gamma', y: 58 },
+  ],
+  width: 600,
+  height: 400,
+  theme: 'magenta',
+  orientation: 'vertical',    // 'vertical' | 'horizontal'
+  groupMode: 'grouped',       // 'grouped' | 'stacked' (for multi-series)
+  borderRadius: 4,            // Bar corner radius
+  barGap: 0.2,                // Gap between bars (0-1)
+  showValues: true,           // Show value labels
+  valuePosition: 'outside',   // 'inside' | 'outside' | 'center'
+  glow: true,
+  animate: true,
+});
+```
+
+### GaugeChart
+
+```javascript
+import { GaugeChart } from 'cybercore-charts';
+
+const chart = new GaugeChart('#container', {
+  value: 72,
+  min: 0,
+  max: 100,
+  width: 300,
+  height: 200,
+  theme: 'green',
+  label: 'CPU Usage',
+  showValue: true,            // Show value in center
+  showMinMax: true,           // Show min/max labels
+  startAngle: -135,           // Arc start angle
+  endAngle: 135,              // Arc end angle
+  thickness: 20,              // Arc thickness
+  showTicks: true,            // Show tick marks
+  tickCount: 10,
+  thresholds: [               // Color zones
+    { value: 60, theme: 'green' },
+    { value: 80, theme: 'yellow' },
+    { value: 100, theme: 'magenta' },
+  ],
+  formatValue: (v) => `${v}%`,
+  glow: true,
+  animate: true,
+});
+```
+
+### DonutChart
+
+```javascript
+import { DonutChart } from 'cybercore-charts';
+
+const chart = new DonutChart('#container', {
+  data: [
+    { label: 'Sector A', value: 35, theme: 'cyan' },
+    { label: 'Sector B', value: 25, theme: 'magenta' },
+    { label: 'Sector C', value: 40, theme: 'green' },
+  ],
+  width: 400,
+  height: 400,
+  innerRadius: 0.6,           // 0 = pie, 0.5+ = donut
+  segmentGap: 2,              // Gap between segments (degrees)
+  showLabels: true,
+  labelPosition: 'outside',   // 'inside' | 'outside'
+  showPercentages: true,
+  centerText: 'Total',        // Text in donut center
+  centerSubtext: '100',
+  startAngle: 0,
+  sortSegments: 'desc',       // true | 'asc' | 'desc'
+  legend: { show: true, position: 'right' },
+  glow: true,
+  animate: true,
+});
+```
+
+### Sparkline
+
+```javascript
+import { Sparkline } from 'cybercore-charts';
+
+const chart = new Sparkline('#container', {
+  data: [5, 10, 8, 15, 12, 18, 14],  // Simple number array
+  width: 120,
+  height: 30,
+  theme: 'yellow',
+  color: '#f0ff00',           // Custom color override
+  lineWidth: 1.5,
+  showArea: false,
+  areaOpacity: 0.2,
+  showEndPoint: true,         // Highlight last value
+  showMinMax: false,          // Highlight min/max points
+  interpolation: 'smooth',    // 'linear' | 'smooth'
+  glow: true,
+  animate: true,
+  animationDuration: 500,
+});
+```
+
+## Chart Instance Methods
+
+All charts provide these methods:
+
+```javascript
+chart.update(newData);                    // Update with new data
+chart.setOptions({ theme: 'magenta' });   // Update options
+chart.resize(800, 600);                   // Resize chart
+chart.getSVG();                           // Get SVGSVGElement
+chart.toSVG();                            // Export as SVG string
+chart.on('pointClick', handler);          // Add event listener
+chart.off('pointClick', handler);         // Remove event listener
+chart.destroy();                          // Cleanup and remove
+```
+
+**Events:** `'pointHover'`, `'pointClick'`, `'segmentHover'`, `'segmentClick'`, `'barHover'`, `'barClick'`, `'legendClick'`, `'resize'`
+
+## React Components
+
+```jsx
+import {
+  CyberLineChart,
+  CyberBarChart,
+  CyberGaugeChart,
+  CyberDonutChart,
+  CyberSparkline,
+} from 'cybercore-charts/react';
+
+function Dashboard() {
+  const chartRef = useRef();
+  const [data, setData] = useState([{ x: 'Jan', y: 10 }, { x: 'Feb', y: 25 }]);
+
+  return (
+    <CyberLineChart
+      ref={chartRef}
+      data={data}
+      width={600}
+      height={400}
+      theme="cyan"
+      showArea={true}
+      glow={true}
+      animate={true}
+      onPointClick={(event) => console.log('Clicked:', event.data)}
+      onPointHover={(event) => console.log('Hover:', event.data)}
+    />
+  );
+}
+
+// Access chart instance via ref
+chartRef.current.update(newData);
+chartRef.current.toSVG();
+chartRef.current.getChart();  // Get underlying chart instance
+```
+
+## Ember.js Components
+
+```bash
+npm install cybercore-charts ember-modifier @ember/render-modifiers
+```
+
+```handlebars
+<CyberLineChart
+  @data={{this.lineData}}
+  @theme="cyan"
+  @showArea={{true}}
+  @animate={{true}}
+/>
+
+<CyberBarChart
+  @data={{this.barData}}
+  @orientation="vertical"
+  @groupMode="grouped"
+/>
+
+<CyberGaugeChart
+  @value={{this.gaugeValue}}
+  @min={{0}}
+  @max={{100}}
+  @theme="green"
+/>
+
+<CyberDonutChart
+  @data={{this.segments}}
+  @innerRadius={{0.6}}
+/>
+
+<CyberSparkline
+  @data={{this.sparkData}}
+  @showEndPoint={{true}}
+/>
+```
+
+**Modifier for imperative usage:**
+```handlebars
+<div {{cyber-chart LineChart (hash data=this.data theme="cyan")}}></div>
+```
+
+## Theming
+
+**Available themes:** `'cyan'`, `'magenta'`, `'green'`, `'yellow'`
+
+**Color palette:**
+- Cyan: `#00f0ff` - Primary/tech
+- Magenta: `#ff00aa` - Danger/highlights
+- Yellow: `#f0ff00` - Warnings/accents
+- Green: `#00ff88` - Success/positive
+
+**Using color utilities:**
+```javascript
+import { getThemeColor, hexToRGBA, lighten, darken } from 'cybercore-charts';
+
+getThemeColor('cyan');        // '#00f0ff'
+hexToRGBA('#00f0ff', 0.5);    // 'rgba(0,240,255,0.5)'
+lighten('#00f0ff', 0.2);      // Lighter cyan
+darken('#00f0ff', 0.2);       // Darker cyan
+```
+
+## Tree-shaking
+
+Import individual charts for smaller bundles:
+
+```javascript
+import { LineChart } from 'cybercore-charts';
+import { BarChart } from 'cybercore-charts';
+import { GaugeChart } from 'cybercore-charts';
+import { DonutChart } from 'cybercore-charts';
+import { Sparkline } from 'cybercore-charts';
+```
+
+## CDN Usage
+
+```html
+<script src="https://unpkg.com/cybercore-charts@latest/dist/cybercore-charts.umd.min.js"></script>
+<script>
+  const chart = CyberCharts.createChart('line', '#chart', {
+    data: [{ x: 0, y: 10 }, { x: 1, y: 25 }],
+    theme: 'cyan',
+    glow: true,
+  });
+
+  // Direct class access
+  const line = new CyberCharts.LineChart('#container', options);
+  const bar = new CyberCharts.BarChart('#container', options);
+  const gauge = new CyberCharts.GaugeChart('#container', options);
+  const donut = new CyberCharts.DonutChart('#container', options);
+  const spark = new CyberCharts.Sparkline('#container', options);
+
+  // Color utilities
+  CyberCharts.colors.getThemeColor('cyan');
+  CyberCharts.colors.hexToRGBA('#00f0ff', 0.5);
+
+  // Math utilities
+  CyberCharts.utils.clamp(value, 0, 100);
+  CyberCharts.utils.lerp(a, b, t);
+</script>
+```
+
+## TypeScript Support
+
+Full TypeScript definitions included:
+
+```typescript
+import type {
+  LineChartOptions,
+  BarChartOptions,
+  GaugeChartOptions,
+  DonutChartOptions,
+  SparklineOptions,
+  DataPoint,
+  DataSeries,
+  DonutSegment,
+  GaugeThreshold,
+  ChartTheme,
+  ChartEvent,
+  ChartEventHandler,
+} from 'cybercore-charts';
+```
+
+## SSR / Node.js
+
+Works in Node.js for server-side rendering:
+
+```javascript
+import { LineChart } from 'cybercore-charts';
+
+// Note: Requires JSDOM or similar for DOM APIs
+const chart = new LineChart(container, options);
+const svgString = chart.toSVG();  // Pure SVG string for SSR
+```
+
+## Accessibility
+
+- All charts include `aria-label` support
+- Respects `prefers-reduced-motion` for animations
+- Keyboard-navigable data points (when tooltip enabled)
+
+## Browser Support
+
+Chrome 88+, Firefox 85+, Safari 14+, Edge 88+

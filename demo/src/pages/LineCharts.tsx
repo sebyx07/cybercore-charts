@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import ChartDemo from '../components/ChartDemo';
+import CodeBlock from '../components/CodeBlock';
 
 // Mock line chart component with SVG
 interface LineChartProps {
@@ -314,44 +315,200 @@ function LineCharts() {
           <p className="cyber-section__subtitle">How to use line charts in your project</p>
         </div>
 
-        <div className="cyber-card">
-          <pre
-            style={{
-              background: 'var(--cyber-void-500)',
-              padding: 'var(--space-md)',
-              borderRadius: 'var(--radius-md)',
-              overflow: 'auto',
-            }}
-          >
-            <code style={{ fontFamily: 'var(--font-mono)', color: 'var(--cyber-chrome-200)' }}>
-              {`import { LineChart } from 'cybercore-charts';
+        <div className="cyber-grid cyber-grid--1">
+          {/* Vanilla JS Example */}
+          <div className="cyber-card">
+            <h3
+              style={{
+                color: 'var(--cyber-cyan-500)',
+                marginBottom: 'var(--space-md)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              Vanilla JavaScript
+            </h3>
+            <CodeBlock
+              code={`// Import the library
+import { LineChart } from 'cybercore-charts';
 
-// Basic usage
-<LineChart
-  data={[30, 45, 25, 60, 35, 55, 40]}
-  color="cyan"
-  showDots={true}
-  showArea={false}
-/>
+// Get your container element
+const container = document.getElementById('chart-container');
 
-// With area fill
-<LineChart
-  data={data}
-  color="magenta"
-  showArea={true}
-  animated={true}
-/>
+// Create a line chart instance
+const chart = new LineChart(container, {
+  data: [30, 45, 25, 60, 35, 55, 40],
+  color: 'cyan',
+  showDots: true,
+  showArea: false,
+  animated: true,
+  width: 600,
+  height: 300,
+});
 
-// Multi-series
-<LineChart
-  series={[
-    { data: revenueData, color: 'cyan', label: 'Revenue' },
-    { data: usersData, color: 'magenta', label: 'Users' },
-  ]}
-  showLegend={true}
-/>`}
-            </code>
-          </pre>
+// Update data dynamically
+chart.setData([40, 55, 35, 70, 45, 65, 50]);
+
+// Destroy when done
+chart.destroy();`}
+              language="javascript"
+              title="vanilla-js.js"
+            />
+          </div>
+
+          {/* React Example */}
+          <div className="cyber-card">
+            <h3
+              style={{
+                color: 'var(--cyber-magenta-500)',
+                marginBottom: 'var(--space-md)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              React Component
+            </h3>
+            <CodeBlock
+              code={`import { LineChart } from 'cybercore-charts/react';
+
+function Dashboard() {
+  const data = [30, 45, 25, 60, 35, 55, 40];
+
+  return (
+    <div className="chart-wrapper">
+      {/* Basic line chart */}
+      <LineChart
+        data={data}
+        color="cyan"
+        showDots={true}
+      />
+
+      {/* With area fill and animation */}
+      <LineChart
+        data={data}
+        color="magenta"
+        showArea={true}
+        animated={true}
+      />
+
+      {/* Multi-series chart */}
+      <LineChart
+        series={[
+          { data: revenueData, color: 'cyan', label: 'Revenue' },
+          { data: usersData, color: 'magenta', label: 'Users' },
+          { data: growthData, color: 'green', label: 'Growth' },
+        ]}
+        showLegend={true}
+        height={400}
+      />
+    </div>
+  );
+}`}
+              language="tsx"
+              title="Dashboard.tsx"
+            />
+          </div>
+
+          {/* Configuration Options */}
+          <div className="cyber-card">
+            <h3
+              style={{
+                color: 'var(--cyber-yellow-500)',
+                marginBottom: 'var(--space-md)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              Configuration Options
+            </h3>
+            <CodeBlock
+              code={`interface LineChartOptions {
+  // Data
+  data?: number[];                    // Single series data
+  series?: SeriesConfig[];            // Multi-series data
+  labels?: string[];                  // X-axis labels
+
+  // Appearance
+  color?: 'cyan' | 'magenta' | 'yellow' | 'green';
+  showDots?: boolean;                 // Show data points (default: true)
+  showArea?: boolean;                 // Fill area under line (default: false)
+  showGrid?: boolean;                 // Show background grid (default: true)
+  strokeWidth?: number;               // Line thickness (default: 2)
+
+  // Animation
+  animated?: boolean;                 // Enable animations (default: false)
+  animationDuration?: number;         // Animation duration in ms (default: 1000)
+  animationEasing?: 'linear' | 'easeOut' | 'easeInOut';
+
+  // Dimensions
+  width?: number | 'auto';            // Chart width (default: 'auto')
+  height?: number;                    // Chart height (default: 200)
+  padding?: number | PaddingConfig;   // Chart padding
+
+  // Interactivity
+  tooltip?: boolean;                  // Show tooltips on hover (default: true)
+  onClick?: (point: DataPoint) => void;
+  onHover?: (point: DataPoint | null) => void;
+
+  // Theming
+  glow?: boolean;                     // Neon glow effect (default: true)
+  glowIntensity?: number;             // Glow strength 0-1 (default: 0.5)
+}
+
+interface SeriesConfig {
+  data: number[];
+  color: 'cyan' | 'magenta' | 'yellow' | 'green';
+  label: string;
+  showDots?: boolean;
+  showArea?: boolean;
+}`}
+              language="typescript"
+              title="types.d.ts"
+            />
+          </div>
+
+          {/* HTML Example */}
+          <div className="cyber-card">
+            <h3
+              style={{
+                color: 'var(--cyber-green-500)',
+                marginBottom: 'var(--space-md)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              HTML / CDN Usage
+            </h3>
+            <CodeBlock
+              code={`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cybercore Charts Demo</title>
+  <!-- Include the CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/cybercore-charts/dist/cybercore-charts.css">
+</head>
+<body>
+  <!-- Chart container -->
+  <div id="my-chart" style="width: 600px; height: 300px;"></div>
+
+  <!-- Include the library -->
+  <script src="https://unpkg.com/cybercore-charts/dist/cybercore-charts.umd.min.js"></script>
+  <script>
+    // Access via global CyberCharts object
+    const { LineChart } = CyberCharts;
+
+    // Create chart
+    const chart = new LineChart('#my-chart', {
+      data: [30, 45, 25, 60, 35, 55, 40],
+      color: 'cyan',
+      showDots: true,
+      animated: true,
+      glow: true,
+    });
+  </script>
+</body>
+</html>`}
+              language="html"
+              title="index.html"
+            />
+          </div>
         </div>
       </section>
     </div>

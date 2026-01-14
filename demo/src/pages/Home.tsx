@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 
+import CodeBlock from '../components/CodeBlock';
+
 // Mock chart preview SVG components
 const LineChartPreview = () => (
   <svg viewBox="0 0 200 100" className="chart-preview" style={{ width: '100%', height: '120px' }}>
@@ -325,7 +327,7 @@ function Home() {
           </div>
 
           <div className="cyber-grid cyber-grid--2">
-            <div className="cyber-card">
+            <div>
               <h3
                 style={{
                   color: 'var(--cyber-cyan-500)',
@@ -335,21 +337,15 @@ function Home() {
               >
                 Installation
               </h3>
-              <pre
-                style={{
-                  background: 'var(--cyber-void-500)',
-                  padding: 'var(--space-md)',
-                  borderRadius: 'var(--radius-md)',
-                  overflow: 'auto',
-                }}
-              >
-                <code style={{ fontFamily: 'var(--font-mono)', color: 'var(--cyber-green-500)' }}>
-                  npm install cybercore-charts
-                </code>
-              </pre>
+              <CodeBlock
+                code="npm install cybercore-charts"
+                language="bash"
+                title="Terminal"
+                showLineNumbers={false}
+              />
             </div>
 
-            <div className="cyber-card">
+            <div>
               <h3
                 style={{
                   color: 'var(--cyber-cyan-500)',
@@ -359,25 +355,17 @@ function Home() {
               >
                 Basic Usage
               </h3>
-              <pre
-                style={{
-                  background: 'var(--cyber-void-500)',
-                  padding: 'var(--space-md)',
-                  borderRadius: 'var(--radius-md)',
-                  overflow: 'auto',
-                  fontSize: 'var(--text-sm)',
-                }}
-              >
-                <code style={{ fontFamily: 'var(--font-mono)', color: 'var(--cyber-chrome-200)' }}>
-                  {`import { LineChart } from 'cybercore-charts';
+              <CodeBlock
+                code={`import { LineChart } from 'cybercore-charts';
 
 <LineChart
   data={[10, 25, 15, 30, 20]}
   color="cyan"
   glow={true}
 />`}
-                </code>
-              </pre>
+                language="tsx"
+                title="App.tsx"
+              />
             </div>
           </div>
         </section>
