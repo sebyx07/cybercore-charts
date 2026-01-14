@@ -1,0 +1,21 @@
+{{!--
+  CyberCore Charts - Ember Line Chart Template
+
+  Uses did-insert and did-update modifiers for lifecycle management.
+  Ensure you have @ember/render-modifiers installed or use ember-modifier.
+
+  @example
+  <CyberLineChart
+    @data={{this.chartData}}
+    @theme="cyan"
+    @showArea={{true}}
+  />
+--}}
+<div
+  class="cyber-line-chart"
+  ...attributes
+  {{did-insert this.setupChart}}
+  {{did-update this.updateChart @data @theme @showArea @areaOpacity @showPoints @pointRadius @lineWidth @interpolation @animate @glow @scanlines @responsive @xAxis @yAxis @legend @tooltip @connectNulls @width @height}}
+>
+  {{yield}}
+</div>

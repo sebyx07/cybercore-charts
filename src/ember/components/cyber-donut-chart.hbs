@@ -1,0 +1,23 @@
+{{!--
+  CyberCore Charts - Ember Donut Chart Template
+
+  Uses did-insert and did-update modifiers for lifecycle management.
+  Ensure you have @ember/render-modifiers installed or use ember-modifier.
+
+  @example
+  <CyberDonutChart
+    @data={{this.segments}}
+    @theme="cyan"
+    @innerRadius={{0.6}}
+    @centerText="Total"
+    @centerSubtext="100%"
+  />
+--}}
+<div
+  class="cyber-donut-chart"
+  ...attributes
+  {{did-insert this.setupChart}}
+  {{did-update this.updateChart @data @theme @innerRadius @segmentGap @showLabels @labelPosition @showPercentages @centerText @centerSubtext @startAngle @sortSegments @animate @glow @scanlines @responsive @legend @tooltip @width @height}}
+>
+  {{yield}}
+</div>

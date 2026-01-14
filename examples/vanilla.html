@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CyberCore Charts - Vanilla JavaScript Example</title>
+
+  <!-- Load CyberCore Charts from CDN -->
+  <script src="https://unpkg.com/cybercore-charts/dist/cybercore-charts.umd.min.js"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      background: linear-gradient(135deg, #06061a 0%, #0a0a1e 50%, #06061a 100%);
+      min-height: 100vh;
+      color: #dee2e6;
+      padding: 2rem;
+    }
+
+    h1 {
+      text-align: center;
+      color: #00f0ff;
+      margin-bottom: 2rem;
+      text-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+    }
+
+    h2 {
+      color: #ff00aa;
+      margin: 2rem 0 1rem;
+      font-size: 1.2rem;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .chart-container {
+      background: rgba(10, 10, 30, 0.8);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5),
+                  inset 0 0 60px rgba(0, 240, 255, 0.02);
+    }
+
+    .chart-container h3 {
+      color: #00f0ff;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+    }
+
+    .chart-box {
+      width: 100%;
+      min-height: 250px;
+    }
+
+    .inline-charts {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      align-items: center;
+      padding: 1rem 0;
+    }
+
+    .sparkline-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: rgba(0, 240, 255, 0.05);
+      border-radius: 4px;
+    }
+
+    .sparkline-label {
+      font-size: 0.9rem;
+      color: #adb5bd;
+    }
+
+    .sparkline-value {
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    .sparkline-value.up { color: #00ff88; }
+    .sparkline-value.down { color: #ff00aa; }
+
+    .controls {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 0.5rem 1rem;
+      background: transparent;
+      border: 1px solid #00f0ff;
+      color: #00f0ff;
+      cursor: pointer;
+      border-radius: 4px;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      background: rgba(0, 240, 255, 0.1);
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+    }
+
+    button.active {
+      background: #00f0ff;
+      color: #06061a;
+    }
+
+    code {
+      background: rgba(0, 240, 255, 0.1);
+      padding: 0.2rem 0.5rem;
+      border-radius: 3px;
+      font-size: 0.85rem;
+    }
+
+    pre {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 1rem;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>CyberCore Charts</h1>
+  <p style="text-align: center; margin-bottom: 2rem; color: #6c757d;">
+    Zero-dependency cyberpunk SVG charts. Loaded via CDN with <code>window.CyberCharts</code>
+  </p>
+
+  <div class="charts-grid">
+    <!-- Line Chart -->
+    <div class="chart-container">
+      <h3>// LINE CHART</h3>
+      <div id="line-chart" class="chart-box"></div>
+      <div class="controls">
+        <button onclick="updateLineTheme('cyan')" class="active" id="btn-cyan">Cyan</button>
+        <button onclick="updateLineTheme('magenta')" id="btn-magenta">Magenta</button>
+        <button onclick="updateLineTheme('green')" id="btn-green">Green</button>
+        <button onclick="updateLineTheme('yellow')" id="btn-yellow">Yellow</button>
+      </div>
+    </div>
+
+    <!-- Bar Chart -->
+    <div class="chart-container">
+      <h3>// BAR CHART</h3>
+      <div id="bar-chart" class="chart-box"></div>
+      <div class="controls">
+        <button onclick="toggleBarOrientation()">Toggle Orientation</button>
+        <button onclick="randomizeBarData()">Randomize Data</button>
+      </div>
+    </div>
+
+    <!-- Gauge Chart -->
+    <div class="chart-container">
+      <h3>// GAUGE CHART</h3>
+      <div id="gauge-chart" class="chart-box" style="display: flex; justify-content: center;"></div>
+      <div class="controls">
+        <button onclick="setGaugeValue(25)">25%</button>
+        <button onclick="setGaugeValue(50)">50%</button>
+        <button onclick="setGaugeValue(75)">75%</button>
+        <button onclick="setGaugeValue(100)">100%</button>
+        <button onclick="setGaugeValue(Math.random() * 100)">Random</button>
+      </div>
+    </div>
+
+    <!-- Donut Chart -->
+    <div class="chart-container">
+      <h3>// DONUT CHART</h3>
+      <div id="donut-chart" class="chart-box" style="display: flex; justify-content: center;"></div>
+      <div class="controls">
+        <button onclick="updateDonutData()">Update Data</button>
+      </div>
+    </div>
+  </div>
+
+  <h2 style="text-align: center;">// SPARKLINES</h2>
+  <div class="chart-container" style="max-width: 800px; margin: 0 auto;">
+    <div class="inline-charts">
+      <div class="sparkline-wrapper">
+        <span class="sparkline-label">CPU:</span>
+        <div id="sparkline-1"></div>
+        <span class="sparkline-value up" id="cpu-value">72%</span>
+      </div>
+      <div class="sparkline-wrapper">
+        <span class="sparkline-label">Memory:</span>
+        <div id="sparkline-2"></div>
+        <span class="sparkline-value" id="mem-value">4.2GB</span>
+      </div>
+      <div class="sparkline-wrapper">
+        <span class="sparkline-label">Network:</span>
+        <div id="sparkline-3"></div>
+        <span class="sparkline-value down" id="net-value">-12%</span>
+      </div>
+    </div>
+  </div>
+
+  <h2 style="text-align: center; margin-top: 3rem;">// USAGE EXAMPLE</h2>
+  <div class="chart-container" style="max-width: 800px; margin: 0 auto;">
+    <pre><code>&lt;!-- Include from CDN --&gt;
+&lt;script src="https://unpkg.com/cybercore-charts"&gt;&lt;/script&gt;
+
+&lt;script&gt;
+  // Create a chart using the factory function
+  const chart = CyberCharts.createChart('line', '#my-chart', {
+    data: [
+      { x: 'Jan', y: 10 },
+      { x: 'Feb', y: 25 },
+      { x: 'Mar', y: 15 },
+      { x: 'Apr', y: 30 },
+    ],
+    theme: 'cyan',
+    showArea: true,
+    glow: true,
+  });
+
+  // Update data later
+  chart.update(newData);
+
+  // Listen to events
+  chart.on('pointClick', (event) =&gt; {
+    console.log('Clicked:', event.data);
+  });
+
+  // Clean up when done
+  chart.destroy();
+&lt;/script&gt;</code></pre>
+  </div>
+
+  <script>
+    // Wait for CyberCharts to be loaded
+    document.addEventListener('DOMContentLoaded', function() {
+      initCharts();
+    });
+
+    // Store chart instances globally for interaction
+    let lineChart, barChart, gaugeChart, donutChart;
+    let sparklines = [];
+    let barOrientation = 'vertical';
+
+    function initCharts() {
+      // Sample data
+      const lineData = [
+        { x: 'Jan', y: 30 },
+        { x: 'Feb', y: 45 },
+        { x: 'Mar', y: 38 },
+        { x: 'Apr', y: 62 },
+        { x: 'May', y: 55 },
+        { x: 'Jun', y: 78 },
+        { x: 'Jul', y: 85 },
+        { x: 'Aug', y: 72 },
+      ];
+
+      // LINE CHART
+      lineChart = CyberCharts.createChart('line', '#line-chart', {
+        data: lineData,
+        width: 400,
+        height: 250,
+        theme: 'cyan',
+        showArea: true,
+        areaOpacity: 0.15,
+        showPoints: true,
+        pointRadius: 5,
+        lineWidth: 2,
+        interpolation: 'smooth',
+        glow: true,
+        animate: true,
+        xAxis: {
+          show: true,
+          showGrid: false,
+          showLabels: true,
+        },
+        yAxis: {
+          show: true,
+          showGrid: true,
+          showLabels: true,
+          min: 0,
+          max: 100,
+        },
+      });
+
+      // BAR CHART
+      barChart = CyberCharts.createChart('bar', '#bar-chart', {
+        data: [
+          { x: 'Alpha', y: 45 },
+          { x: 'Beta', y: 72 },
+          { x: 'Gamma', y: 58 },
+          { x: 'Delta', y: 89 },
+          { x: 'Epsilon', y: 35 },
+        ],
+        width: 400,
+        height: 250,
+        theme: 'magenta',
+        orientation: 'vertical',
+        glow: true,
+        animate: true,
+        borderRadius: 4,
+        yAxis: {
+          show: true,
+          showGrid: true,
+          min: 0,
+          max: 100,
+        },
+      });
+
+      // GAUGE CHART
+      gaugeChart = CyberCharts.createChart('gauge', '#gauge-chart', {
+        value: 72,
+        width: 280,
+        height: 220,
+        theme: 'green',
+        min: 0,
+        max: 100,
+        glow: true,
+        animate: true,
+        showValue: true,
+        showMinMax: true,
+        showTicks: true,
+        tickCount: 10,
+        label: 'SYSTEM LOAD',
+        thresholds: [
+          { value: 30, theme: 'green' },
+          { value: 70, theme: 'yellow' },
+          { value: 90, theme: 'magenta' },
+        ],
+      });
+
+      // DONUT CHART
+      donutChart = CyberCharts.createChart('donut', '#donut-chart', {
+        data: [
+          { label: 'Sector A', value: 35, theme: 'cyan' },
+          { label: 'Sector B', value: 25, theme: 'magenta' },
+          { label: 'Sector C', value: 20, theme: 'green' },
+          { label: 'Sector D', value: 20, theme: 'yellow' },
+        ],
+        width: 320,
+        height: 280,
+        innerRadius: 0.65,
+        glow: true,
+        animate: true,
+        showLabels: true,
+        showPercentages: true,
+        centerText: 'TOTAL',
+        centerSubtext: '100%',
+        legend: {
+          show: false,
+        },
+      });
+
+      // SPARKLINES
+      const sparklineData1 = [45, 52, 48, 62, 58, 72, 68, 75, 70, 72];
+      const sparklineData2 = [3.8, 4.0, 3.9, 4.1, 4.0, 4.3, 4.1, 4.2, 4.1, 4.2];
+      const sparklineData3 = [120, 115, 118, 110, 105, 108, 100, 95, 98, 95];
+
+      sparklines[0] = CyberCharts.createChart('sparkline', '#sparkline-1', {
+        data: sparklineData1,
+        width: 100,
+        height: 28,
+        theme: 'cyan',
+        showArea: true,
+        areaOpacity: 0.2,
+        showEndPoint: true,
+        glow: true,
+        interpolation: 'smooth',
+      });
+
+      sparklines[1] = CyberCharts.createChart('sparkline', '#sparkline-2', {
+        data: sparklineData2,
+        width: 100,
+        height: 28,
+        theme: 'green',
+        showArea: true,
+        areaOpacity: 0.2,
+        showEndPoint: true,
+        glow: true,
+        interpolation: 'smooth',
+      });
+
+      sparklines[2] = CyberCharts.createChart('sparkline', '#sparkline-3', {
+        data: sparklineData3,
+        width: 100,
+        height: 28,
+        theme: 'magenta',
+        showArea: true,
+        areaOpacity: 0.2,
+        showEndPoint: true,
+        glow: true,
+        interpolation: 'smooth',
+      });
+
+      // Update sparklines periodically
+      setInterval(updateSparklines, 2000);
+    }
+
+    // Interactive functions
+    function updateLineTheme(theme) {
+      if (lineChart) {
+        lineChart.setOptions({ theme: theme });
+
+        // Update button states
+        document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('btn-' + theme)?.classList.add('active');
+      }
+    }
+
+    function toggleBarOrientation() {
+      barOrientation = barOrientation === 'vertical' ? 'horizontal' : 'vertical';
+      if (barChart) {
+        barChart.setOptions({ orientation: barOrientation });
+      }
+    }
+
+    function randomizeBarData() {
+      if (barChart) {
+        const newData = [
+          { x: 'Alpha', y: Math.floor(Math.random() * 80) + 20 },
+          { x: 'Beta', y: Math.floor(Math.random() * 80) + 20 },
+          { x: 'Gamma', y: Math.floor(Math.random() * 80) + 20 },
+          { x: 'Delta', y: Math.floor(Math.random() * 80) + 20 },
+          { x: 'Epsilon', y: Math.floor(Math.random() * 80) + 20 },
+        ];
+        barChart.update(newData);
+      }
+    }
+
+    function setGaugeValue(value) {
+      if (gaugeChart) {
+        gaugeChart.setValue(value);
+      }
+    }
+
+    function updateDonutData() {
+      if (donutChart) {
+        const newData = [
+          { label: 'Sector A', value: Math.floor(Math.random() * 40) + 10, theme: 'cyan' },
+          { label: 'Sector B', value: Math.floor(Math.random() * 40) + 10, theme: 'magenta' },
+          { label: 'Sector C', value: Math.floor(Math.random() * 40) + 10, theme: 'green' },
+          { label: 'Sector D', value: Math.floor(Math.random() * 40) + 10, theme: 'yellow' },
+        ];
+        donutChart.update(newData);
+      }
+    }
+
+    function updateSparklines() {
+      // Simulate real-time data updates
+      sparklines.forEach((sparkline, index) => {
+        if (sparkline) {
+          const currentData = sparkline.options?.data || [];
+          const lastValue = currentData[currentData.length - 1] || 50;
+          const newValue = Math.max(0, lastValue + (Math.random() - 0.5) * 20);
+          const newData = [...currentData.slice(1), newValue];
+          sparkline.update(newData);
+        }
+      });
+    }
+  </script>
+</body>
+</html>

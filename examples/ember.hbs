@@ -1,0 +1,492 @@
+{{!--
+  CyberCore Charts - Ember.js Example
+
+  This file demonstrates how to use CyberCore Charts with Ember.js.
+
+  Installation:
+    npm install cybercore-charts
+
+  Setup:
+    1. Create a modifier (app/modifiers/cyber-chart.js) - see JavaScript below
+    2. Use the modifier in your templates with {{cyber-chart}}
+--}}
+
+{{!-- ==========================================================================
+  Example 1: Using the cyber-chart Modifier
+  ========================================================================== --}}
+
+{{!-- Line Chart --}}
+<div class="chart-container">
+  <h3>// LINE CHART</h3>
+  <div
+    {{cyber-chart
+      type="line"
+      data=this.lineChartData
+      theme=this.selectedTheme
+      showArea=true
+      areaOpacity=0.15
+      showPoints=true
+      interpolation="smooth"
+      glow=true
+      animate=true
+      width=400
+      height=250
+      yAxis=(hash show=true showGrid=true min=0 max=100)
+      onPointClick=this.handlePointClick
+    }}
+  ></div>
+
+  <div class="controls">
+    {{#each this.themes as |theme|}}
+      <button
+        type="button"
+        class="theme-btn {{if (eq theme this.selectedTheme) 'active'}}"
+        {{on "click" (fn this.setTheme theme)}}
+      >
+        {{capitalize theme}}
+      </button>
+    {{/each}}
+  </div>
+</div>
+
+{{!-- Bar Chart --}}
+<div class="chart-container">
+  <h3>// BAR CHART</h3>
+  <div
+    {{cyber-chart
+      type="bar"
+      data=this.barChartData
+      theme="magenta"
+      orientation=this.barOrientation
+      glow=true
+      animate=true
+      width=400
+      height=250
+      borderRadius=4
+    }}
+  ></div>
+
+  <div class="controls">
+    <button
+      type="button"
+      {{on "click" this.toggleBarOrientation}}
+    >
+      Toggle Orientation
+    </button>
+    <button
+      type="button"
+      {{on "click" this.randomizeBarData}}
+    >
+      Randomize Data
+    </button>
+  </div>
+</div>
+
+{{!-- Gauge Chart --}}
+<div class="chart-container">
+  <h3>// GAUGE CHART</h3>
+  <div
+    class="gauge-wrapper"
+    {{cyber-chart
+      type="gauge"
+      value=this.gaugeValue
+      theme="green"
+      min=0
+      max=100
+      glow=true
+      animate=true
+      showValue=true
+      showMinMax=true
+      label="SYSTEM LOAD"
+      width=280
+      height=220
+      thresholds=this.gaugeThresholds
+    }}
+  ></div>
+
+  <div class="controls">
+    <button type="button" {{on "click" (fn this.setGaugeValue 25)}}>25%</button>
+    <button type="button" {{on "click" (fn this.setGaugeValue 50)}}>50%</button>
+    <button type="button" {{on "click" (fn this.setGaugeValue 75)}}>75%</button>
+    <button type="button" {{on "click" (fn this.setGaugeValue 100)}}>100%</button>
+  </div>
+</div>
+
+{{!-- Donut Chart --}}
+<div class="chart-container">
+  <h3>// DONUT CHART</h3>
+  <div
+    class="donut-wrapper"
+    {{cyber-chart
+      type="donut"
+      data=this.donutChartData
+      innerRadius=0.65
+      glow=true
+      animate=true
+      showLabels=true
+      showPercentages=true
+      centerText="TOTAL"
+      centerSubtext="100%"
+      width=300
+      height=280
+    }}
+  ></div>
+</div>
+
+{{!-- Sparklines in a dashboard context --}}
+<div class="chart-container sparklines-section">
+  <h3>// SPARKLINES</h3>
+  <div class="sparklines-row">
+    {{#each this.sparklineMetrics as |metric|}}
+      <div class="sparkline-item">
+        <span class="sparkline-label">{{metric.label}}:</span>
+        <div
+          {{cyber-chart
+            type="sparkline"
+            data=metric.data
+            theme=metric.theme
+            width=100
+            height=28
+            showArea=true
+            showEndPoint=true
+            glow=true
+            interpolation="smooth"
+          }}
+        ></div>
+        <span class="sparkline-value {{metric.trend}}">
+          {{metric.currentValue}}
+        </span>
+      </div>
+    {{/each}}
+  </div>
+</div>
+
+
+{{!-- ==========================================================================
+  Example 2: Using the CyberChart Component
+  ========================================================================== --}}
+
+{{!-- Alternative component-based approach --}}
+<CyberChart
+  @type="line"
+  @data={{this.lineChartData}}
+  @theme={{this.selectedTheme}}
+  @options={{hash
+    showArea=true
+    glow=true
+    animate=true
+  }}
+  @onPointClick={{this.handlePointClick}}
+/>
+
+
+{{!-- ==========================================================================
+  JavaScript Files for Ember Integration
+  ========================================================================== --}}
+
+{{!--
+  FILE: app/modifiers/cyber-chart.js
+
+  A custom modifier for using CyberCore Charts in Ember templates.
+  This modifier handles chart creation, updates, and cleanup.
+
+  ```javascript
+  import { modifier } from 'ember-modifier';
+  import { createChart } from 'cybercore-charts';
+
+  export default modifier((element, positional, named) => {
+    const {
+      type = 'line',
+      data,
+      theme = 'cyan',
+      onPointClick,
+      onPointHover,
+      ...options
+    } = named;
+
+    // Create the chart
+    const chart = createChart(type, element, {
+      data,
+      theme,
+      ...options,
+    });
+
+    // Set up event listeners
+    if (onPointClick) {
+      chart.on('pointClick', (event) => {
+        onPointClick(event.data.point, event.data.series);
+      });
+    }
+
+    if (onPointHover) {
+      chart.on('pointHover', (event) => {
+        onPointHover(event.data.point, event.data.series);
+      });
+    }
+
+    // Return cleanup function
+    return () => {
+      chart.destroy();
+    };
+  });
+  ```
+--}}
+
+{{!--
+  FILE: app/components/cyber-chart.js
+
+  A component wrapper for CyberCore Charts (alternative approach).
+
+  ```javascript
+  import Component from '@glimmer/component';
+  import { tracked } from '@glimmer/tracking';
+  import { action } from '@ember/object';
+  import { createChart } from 'cybercore-charts';
+
+  export default class CyberChartComponent extends Component {
+    chart = null;
+
+    get chartOptions() {
+      return {
+        data: this.args.data,
+        theme: this.args.theme || 'cyan',
+        ...this.args.options,
+      };
+    }
+
+    @action
+    setupChart(element) {
+      this.chart = createChart(
+        this.args.type || 'line',
+        element,
+        this.chartOptions
+      );
+
+      if (this.args.onPointClick) {
+        this.chart.on('pointClick', (event) => {
+          this.args.onPointClick(event.data.point, event.data.series);
+        });
+      }
+
+      return () => {
+        this.chart?.destroy();
+        this.chart = null;
+      };
+    }
+
+    @action
+    updateChart() {
+      if (this.chart && this.args.data) {
+        this.chart.update(this.args.data);
+      }
+    }
+  }
+  ```
+
+  FILE: app/components/cyber-chart.hbs
+
+  ```handlebars
+  <div
+    {{did-insert this.setupChart}}
+    {{did-update this.updateChart @data}}
+    ...attributes
+  ></div>
+  ```
+--}}
+
+{{!--
+  FILE: app/controllers/dashboard.js
+
+  Controller for the dashboard page with chart data.
+
+  ```javascript
+  import Controller from '@ember/controller';
+  import { tracked } from '@glimmer/tracking';
+  import { action } from '@ember/object';
+
+  export default class DashboardController extends Controller {
+    @tracked selectedTheme = 'cyan';
+    @tracked barOrientation = 'vertical';
+    @tracked gaugeValue = 72;
+
+    themes = ['cyan', 'magenta', 'green', 'yellow'];
+
+    @tracked lineChartData = [
+      { x: 'Jan', y: 30 },
+      { x: 'Feb', y: 45 },
+      { x: 'Mar', y: 38 },
+      { x: 'Apr', y: 62 },
+      { x: 'May', y: 55 },
+      { x: 'Jun', y: 78 },
+    ];
+
+    @tracked barChartData = [
+      { x: 'Alpha', y: 45 },
+      { x: 'Beta', y: 72 },
+      { x: 'Gamma', y: 58 },
+      { x: 'Delta', y: 89 },
+      { x: 'Epsilon', y: 35 },
+    ];
+
+    donutChartData = [
+      { label: 'Sector A', value: 35, theme: 'cyan' },
+      { label: 'Sector B', value: 25, theme: 'magenta' },
+      { label: 'Sector C', value: 20, theme: 'green' },
+      { label: 'Sector D', value: 20, theme: 'yellow' },
+    ];
+
+    gaugeThresholds = [
+      { value: 30, theme: 'green' },
+      { value: 70, theme: 'yellow' },
+      { value: 90, theme: 'magenta' },
+    ];
+
+    @tracked sparklineMetrics = [
+      {
+        label: 'CPU',
+        data: [45, 52, 48, 62, 58, 72, 68, 75, 70, 72],
+        theme: 'cyan',
+        currentValue: '72%',
+        trend: 'up',
+      },
+      {
+        label: 'Memory',
+        data: [3.8, 4.0, 3.9, 4.1, 4.0, 4.3, 4.1, 4.2, 4.1, 4.2],
+        theme: 'green',
+        currentValue: '4.2GB',
+        trend: 'neutral',
+      },
+      {
+        label: 'Network',
+        data: [120, 115, 118, 110, 105, 108, 100, 95, 98, 95],
+        theme: 'magenta',
+        currentValue: '-12%',
+        trend: 'down',
+      },
+    ];
+
+    @action
+    setTheme(theme) {
+      this.selectedTheme = theme;
+    }
+
+    @action
+    toggleBarOrientation() {
+      this.barOrientation =
+        this.barOrientation === 'vertical' ? 'horizontal' : 'vertical';
+    }
+
+    @action
+    randomizeBarData() {
+      this.barChartData = this.barChartData.map((point) => ({
+        ...point,
+        y: Math.floor(Math.random() * 80) + 20,
+      }));
+    }
+
+    @action
+    setGaugeValue(value) {
+      this.gaugeValue = value;
+    }
+
+    @action
+    handlePointClick(point, series) {
+      console.log('Point clicked:', point, series);
+      // Handle the click event
+    }
+  }
+  ```
+--}}
+
+{{!--
+  FILE: app/styles/cyber-charts.css
+
+  CSS styles for the chart containers.
+
+  ```css
+  .chart-container {
+    background: rgba(10, 10, 30, 0.8);
+    border: 1px solid rgba(0, 240, 255, 0.2);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .chart-container h3 {
+    color: #00f0ff;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+  }
+
+  .controls {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .controls button {
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: 1px solid #00f0ff;
+    color: #00f0ff;
+    cursor: pointer;
+    border-radius: 4px;
+    font-family: inherit;
+    transition: all 0.2s;
+  }
+
+  .controls button:hover {
+    background: rgba(0, 240, 255, 0.1);
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+  }
+
+  .controls button.active {
+    background: #00f0ff;
+    color: #06061a;
+  }
+
+  .gauge-wrapper,
+  .donut-wrapper {
+    display: flex;
+    justify-content: center;
+  }
+
+  .sparklines-row {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .sparkline-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: rgba(0, 240, 255, 0.05);
+    border-radius: 4px;
+  }
+
+  .sparkline-label {
+    color: #adb5bd;
+  }
+
+  .sparkline-value {
+    font-weight: bold;
+  }
+
+  .sparkline-value.up {
+    color: #00ff88;
+  }
+
+  .sparkline-value.down {
+    color: #ff00aa;
+  }
+
+  .sparkline-value.neutral {
+    color: #f0ff00;
+  }
+  ```
+--}}

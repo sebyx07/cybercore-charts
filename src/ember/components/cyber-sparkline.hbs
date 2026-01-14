@@ -1,0 +1,24 @@
+{{!--
+  CyberCore Charts - Ember Sparkline Template
+
+  Uses did-insert and did-update modifiers for lifecycle management.
+  Ensure you have @ember/render-modifiers installed or use ember-modifier.
+
+  Sparklines are inline mini charts, so we use a span element.
+
+  @example
+  <CyberSparkline
+    @data={{this.sparklineData}}
+    @theme="cyan"
+    @showArea={{true}}
+    @showEndPoint={{true}}
+  />
+--}}
+<span
+  class="cyber-sparkline"
+  ...attributes
+  {{did-insert this.setupChart}}
+  {{did-update this.updateChart @data @theme @color @lineWidth @showArea @areaOpacity @showEndPoint @showMinMax @glow @interpolation @animate @animationDuration @width @height}}
+>
+  {{yield}}
+</span>

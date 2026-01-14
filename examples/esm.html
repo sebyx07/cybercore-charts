@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CyberCore Charts - ES Modules Example</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      background: linear-gradient(135deg, #06061a 0%, #0a0a1e 50%, #06061a 100%);
+      min-height: 100vh;
+      color: #dee2e6;
+      padding: 2rem;
+    }
+
+    h1 {
+      text-align: center;
+      color: #00f0ff;
+      margin-bottom: 1rem;
+      text-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #6c757d;
+      margin-bottom: 2rem;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      gap: 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .chart-container {
+      background: rgba(10, 10, 30, 0.8);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5),
+                  inset 0 0 60px rgba(0, 240, 255, 0.02);
+    }
+
+    .chart-container h3 {
+      color: #00f0ff;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+    }
+
+    .chart-box {
+      width: 100%;
+      min-height: 300px;
+    }
+
+    code {
+      background: rgba(0, 240, 255, 0.1);
+      padding: 0.2rem 0.5rem;
+      border-radius: 3px;
+      font-size: 0.85rem;
+    }
+
+    pre {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 1rem;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      margin: 1rem 0;
+      color: #adb5bd;
+    }
+
+    pre .keyword { color: #ff00aa; }
+    pre .string { color: #00ff88; }
+    pre .number { color: #f0ff00; }
+    pre .comment { color: #6c757d; }
+    pre .function { color: #00f0ff; }
+  </style>
+</head>
+<body>
+  <h1>CyberCore Charts</h1>
+  <p class="subtitle">
+    Using native ES Modules with <code>import</code> syntax
+  </p>
+
+  <div class="charts-grid">
+    <!-- Multi-Series Line Chart -->
+    <div class="chart-container">
+      <h3>// MULTI-SERIES LINE CHART</h3>
+      <div id="multi-line-chart" class="chart-box"></div>
+    </div>
+
+    <!-- Stacked Bar Chart -->
+    <div class="chart-container">
+      <h3>// GROUPED BAR CHART</h3>
+      <div id="stacked-bar-chart" class="chart-box"></div>
+    </div>
+  </div>
+
+  <div class="chart-container" style="max-width: 800px; margin: 2rem auto;">
+    <h3>// ES MODULES USAGE</h3>
+    <pre><code><span class="comment">// Import directly from ESM bundle</span>
+<span class="keyword">import</span> {
+  <span class="function">createChart</span>,
+  <span class="function">LineChart</span>,
+  <span class="function">BarChart</span>,
+  cyberColors,
+} <span class="keyword">from</span> <span class="string">'https://unpkg.com/cybercore-charts/dist/cybercore-charts.esm.js'</span>;
+
+<span class="comment">// Using the factory function (recommended)</span>
+<span class="keyword">const</span> chart = <span class="function">createChart</span>(<span class="string">'line'</span>, <span class="string">'#chart'</span>, {
+  data: [...],
+  theme: <span class="string">'cyan'</span>,
+});
+
+<span class="comment">// Or use classes directly for more control</span>
+<span class="keyword">const</span> lineChart = <span class="keyword">new</span> <span class="function">LineChart</span>(<span class="string">'#chart'</span>, {
+  data: [...],
+  theme: <span class="string">'magenta'</span>,
+  showArea: <span class="keyword">true</span>,
+});
+
+<span class="comment">// Access color utilities</span>
+console.<span class="function">log</span>(cyberColors.cyan[<span class="number">500</span>]); <span class="comment">// #00f0ff</span></code></pre>
+  </div>
+
+  <!-- ES Module Script -->
+  <script type="module">
+    // Import from ESM bundle
+    // In production, use: import { ... } from 'https://unpkg.com/cybercore-charts/dist/cybercore-charts.esm.js';
+    // For local development:
+    import {
+      createChart,
+      LineChart,
+      BarChart,
+      cyberColors,
+      getThemeColor,
+      generateSeriesColors,
+    } from '../dist/cybercore-charts.esm.js';
+
+    // Log available colors to console
+    console.log('CyberCore Colors:', cyberColors);
+    console.log('Cyan 500:', getThemeColor('cyan'));
+    console.log('Generated series colors:', generateSeriesColors(4));
+
+    // Multi-series line chart data
+    const multiSeriesData = [
+      {
+        id: 'series-1',
+        name: 'Incoming',
+        data: [
+          { x: '00:00', y: 120 },
+          { x: '04:00', y: 85 },
+          { x: '08:00', y: 210 },
+          { x: '12:00', y: 340 },
+          { x: '16:00', y: 280 },
+          { x: '20:00', y: 190 },
+          { x: '24:00', y: 145 },
+        ],
+        theme: 'cyan',
+      },
+      {
+        id: 'series-2',
+        name: 'Outgoing',
+        data: [
+          { x: '00:00', y: 80 },
+          { x: '04:00', y: 60 },
+          { x: '08:00', y: 150 },
+          { x: '12:00', y: 220 },
+          { x: '16:00', y: 195 },
+          { x: '20:00', y: 130 },
+          { x: '24:00', y: 95 },
+        ],
+        theme: 'magenta',
+      },
+      {
+        id: 'series-3',
+        name: 'Cached',
+        data: [
+          { x: '00:00', y: 40 },
+          { x: '04:00', y: 35 },
+          { x: '08:00', y: 65 },
+          { x: '12:00', y: 95 },
+          { x: '16:00', y: 85 },
+          { x: '20:00', y: 55 },
+          { x: '24:00', y: 42 },
+        ],
+        theme: 'green',
+      },
+    ];
+
+    // Create multi-series line chart using the class directly
+    const multiLineChart = new LineChart('#multi-line-chart', {
+      data: multiSeriesData,
+      width: 450,
+      height: 300,
+      showArea: false,
+      showPoints: true,
+      pointRadius: 4,
+      lineWidth: 2,
+      interpolation: 'smooth',
+      glow: true,
+      animate: true,
+      xAxis: {
+        show: true,
+        showGrid: false,
+        showLabels: true,
+      },
+      yAxis: {
+        show: true,
+        showGrid: true,
+        showLabels: true,
+        min: 0,
+        max: 400,
+        formatLabel: (v) => `${v}`,
+      },
+      legend: {
+        show: true,
+        position: 'top',
+        align: 'end',
+      },
+      tooltip: {
+        enabled: true,
+        formatter: (point, series) => `
+          <div style="font-weight: bold; color: ${getThemeColor(series.theme || 'cyan')}">${series.name}</div>
+          <div>${point.x}: ${point.y} req/s</div>
+        `,
+      },
+    });
+
+    // Add event listeners
+    multiLineChart.on('pointClick', (event) => {
+      console.log('Point clicked:', event.data);
+    });
+
+    // Grouped bar chart data
+    const groupedBarData = [
+      {
+        id: 'q1',
+        name: 'Q1',
+        data: [
+          { x: 'Alpha', y: 45 },
+          { x: 'Beta', y: 62 },
+          { x: 'Gamma', y: 38 },
+          { x: 'Delta', y: 71 },
+        ],
+        theme: 'cyan',
+      },
+      {
+        id: 'q2',
+        name: 'Q2',
+        data: [
+          { x: 'Alpha', y: 52 },
+          { x: 'Beta', y: 58 },
+          { x: 'Gamma', y: 45 },
+          { x: 'Delta', y: 65 },
+        ],
+        theme: 'magenta',
+      },
+      {
+        id: 'q3',
+        name: 'Q3',
+        data: [
+          { x: 'Alpha', y: 68 },
+          { x: 'Beta', y: 72 },
+          { x: 'Gamma', y: 55 },
+          { x: 'Delta', y: 78 },
+        ],
+        theme: 'green',
+      },
+    ];
+
+    // Create grouped bar chart using the factory function
+    const groupedBarChart = createChart('bar', '#stacked-bar-chart', {
+      data: groupedBarData,
+      width: 450,
+      height: 300,
+      orientation: 'vertical',
+      groupMode: 'grouped',
+      glow: true,
+      animate: true,
+      borderRadius: 3,
+      barGap: 0.05,
+      groupGap: 0.2,
+      xAxis: {
+        show: true,
+        showGrid: false,
+        showLabels: true,
+      },
+      yAxis: {
+        show: true,
+        showGrid: true,
+        showLabels: true,
+        min: 0,
+        max: 100,
+      },
+      legend: {
+        show: true,
+        position: 'top',
+        align: 'end',
+      },
+    });
+
+    // Export charts to window for debugging
+    window.charts = {
+      multiLineChart,
+      groupedBarChart,
+    };
+
+    console.log('Charts initialized. Access via window.charts');
+  </script>
+</body>
+</html>

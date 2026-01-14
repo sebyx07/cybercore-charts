@@ -1,0 +1,573 @@
+/**
+ * CyberCore Charts - Base Styles
+ * Cyberpunk-themed styles for SVG charts
+ */
+
+// ============================================================================
+// Variables
+// ============================================================================
+
+// Colors - Cyberpunk palette
+$cyber-cyan-50: #e0ffff;
+$cyber-cyan-100: #b3ffff;
+$cyber-cyan-200: #80ffff;
+$cyber-cyan-300: #4dffff;
+$cyber-cyan-400: #1affff;
+$cyber-cyan-500: #00f0ff;
+$cyber-cyan-600: #00c4d4;
+$cyber-cyan-700: #0098a8;
+$cyber-cyan-800: #006c7d;
+$cyber-cyan-900: #004051;
+
+$cyber-magenta-50: #ffe0f0;
+$cyber-magenta-100: #ffb3da;
+$cyber-magenta-200: #ff80c4;
+$cyber-magenta-300: #ff4dae;
+$cyber-magenta-400: #ff1a98;
+$cyber-magenta-500: #ff00aa;
+$cyber-magenta-600: #d4008c;
+$cyber-magenta-700: #a8006e;
+$cyber-magenta-800: #7d0050;
+$cyber-magenta-900: #510032;
+
+$cyber-green-50: #e0fff2;
+$cyber-green-100: #b3ffdf;
+$cyber-green-200: #80ffcc;
+$cyber-green-300: #4dffb9;
+$cyber-green-400: #1affa6;
+$cyber-green-500: #00ff88;
+$cyber-green-600: #00d470;
+$cyber-green-700: #00a858;
+$cyber-green-800: #007d40;
+$cyber-green-900: #005128;
+
+$cyber-yellow-50: #fffde0;
+$cyber-yellow-100: #fffbb3;
+$cyber-yellow-200: #fff980;
+$cyber-yellow-300: #fff74d;
+$cyber-yellow-400: #fff51a;
+$cyber-yellow-500: #f0ff00;
+$cyber-yellow-600: #c4d400;
+$cyber-yellow-700: #98a800;
+$cyber-yellow-800: #6c7d00;
+$cyber-yellow-900: #405100;
+
+$cyber-void-50: #1a1a2e;
+$cyber-void-100: #16162a;
+$cyber-void-200: #121226;
+$cyber-void-300: #0e0e22;
+$cyber-void-400: #0a0a1e;
+$cyber-void-500: #06061a;
+$cyber-void-600: #050516;
+$cyber-void-700: #040412;
+$cyber-void-800: #03030e;
+$cyber-void-900: #02020a;
+
+$cyber-chrome-50: #f8f9fa;
+$cyber-chrome-100: #e9ecef;
+$cyber-chrome-200: #dee2e6;
+$cyber-chrome-300: #ced4da;
+$cyber-chrome-400: #adb5bd;
+$cyber-chrome-500: #6c757d;
+$cyber-chrome-600: #495057;
+$cyber-chrome-700: #343a40;
+$cyber-chrome-800: #212529;
+$cyber-chrome-900: #121416;
+
+// Chart-specific colors
+$chart-background: $cyber-void-500;
+$chart-grid: rgba($cyber-chrome-500, 0.2);
+$chart-axis: rgba($cyber-chrome-400, 0.4);
+$chart-text: $cyber-chrome-200;
+$chart-text-muted: $cyber-chrome-400;
+$chart-tooltip-bg: rgba($cyber-void-400, 0.95);
+$chart-tooltip-border: $cyber-chrome-600;
+
+// Animation
+$animation-duration: 300ms;
+$animation-easing: cubic-bezier(0.4, 0, 0.2, 1);
+
+// ============================================================================
+// Base Chart Styles
+// ============================================================================
+
+.cyber-chart {
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Consolas', monospace;
+
+  // Chart background
+  &__background {
+    fill: $chart-background;
+  }
+
+  // Grid lines
+  &__grid-line {
+    stroke: $chart-grid;
+    stroke-dasharray: 4 4;
+    transition: stroke $animation-duration $animation-easing;
+  }
+
+  // Axis lines
+  &__axis-line {
+    stroke: $chart-axis;
+    stroke-width: 1;
+  }
+
+  // Tick labels
+  &__tick-label {
+    fill: $chart-text-muted;
+    font-size: 11px;
+    user-select: none;
+  }
+
+  // Axis labels
+  &__axis-label {
+    fill: $chart-text;
+    font-size: 12px;
+    font-weight: 500;
+  }
+}
+
+// ============================================================================
+// Line Chart Styles
+// ============================================================================
+
+.cyber-chart__line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition:
+    stroke-width $animation-duration $animation-easing,
+    opacity $animation-duration $animation-easing;
+
+  &:hover {
+    stroke-width: 3;
+  }
+}
+
+.cyber-chart__area-fill {
+  transition: opacity $animation-duration $animation-easing;
+}
+
+.cyber-chart__point {
+  cursor: pointer;
+  transition:
+    r $animation-duration $animation-easing,
+    transform $animation-duration $animation-easing;
+  transform-origin: center;
+  transform-box: fill-box;
+
+  &:hover {
+    r: 6;
+    transform: scale(1.2);
+  }
+}
+
+// ============================================================================
+// Bar Chart Styles
+// ============================================================================
+
+.cyber-chart__bar {
+  cursor: pointer;
+  transition:
+    filter $animation-duration $animation-easing,
+    transform $animation-duration $animation-easing;
+  transform-origin: center bottom;
+  transform-box: fill-box;
+
+  &:hover {
+    filter: brightness(1.2);
+    transform: scaleY(1.02);
+  }
+}
+
+// Horizontal bars
+.cyber-chart--horizontal .cyber-chart__bar {
+  transform-origin: left center;
+
+  &:hover {
+    transform: scaleX(1.02);
+  }
+}
+
+// ============================================================================
+// Gauge Chart Styles
+// ============================================================================
+
+.cyber-chart--gauge {
+  .cyber-chart__track {
+    stroke-linecap: round;
+  }
+
+  .cyber-chart__value-arc {
+    stroke-linecap: round;
+    transition: stroke-dashoffset $animation-duration $animation-easing;
+  }
+
+  .cyber-chart__indicator {
+    transition:
+      cx $animation-duration $animation-easing,
+      cy $animation-duration $animation-easing;
+  }
+
+  .cyber-chart__value-text {
+    font-weight: bold;
+    dominant-baseline: middle;
+    text-anchor: middle;
+  }
+
+  .cyber-chart__tick {
+    stroke: $chart-axis;
+  }
+
+  .cyber-chart__tick-label {
+    fill: $chart-text-muted;
+    font-size: 10px;
+  }
+}
+
+// ============================================================================
+// Donut Chart Styles
+// ============================================================================
+
+.cyber-chart--donut {
+  .cyber-chart__segment {
+    cursor: pointer;
+    transition:
+      transform $animation-duration $animation-easing,
+      filter $animation-duration $animation-easing;
+    transform-box: fill-box;
+
+    &:hover {
+      filter: brightness(1.15);
+    }
+  }
+
+  .cyber-chart__center-text {
+    font-weight: bold;
+    text-anchor: middle;
+    dominant-baseline: middle;
+  }
+
+  .cyber-chart__center-subtext {
+    text-anchor: middle;
+    dominant-baseline: middle;
+  }
+
+  .cyber-chart__label {
+    font-size: 11px;
+    transition: opacity $animation-duration $animation-easing;
+  }
+}
+
+// ============================================================================
+// Sparkline Styles
+// ============================================================================
+
+.cyber-sparkline {
+  display: inline-block;
+  vertical-align: middle;
+
+  &__line {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  &__area {
+    fill-opacity: 0.2;
+  }
+
+  &__point {
+    &--end {
+      // End point styling
+    }
+
+    &--min {
+      fill: $cyber-magenta-500;
+    }
+
+    &--max {
+      fill: $cyber-green-500;
+    }
+  }
+}
+
+// ============================================================================
+// Tooltip Styles
+// ============================================================================
+
+.cyber-chart__tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: $chart-tooltip-bg;
+  border: 1px solid $chart-tooltip-border;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-family: inherit;
+  color: $chart-text;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba($cyber-cyan-500, 0.1);
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 150ms $animation-easing;
+  backdrop-filter: blur(4px);
+
+  &--visible {
+    opacity: 1;
+  }
+
+  // Tooltip arrow
+  &::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 6px solid transparent;
+    border-right-color: $chart-tooltip-border;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: -4px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 5px solid transparent;
+    border-right-color: $chart-tooltip-bg;
+  }
+}
+
+// ============================================================================
+// Legend Styles
+// ============================================================================
+
+.cyber-chart__legend {
+  font-size: 11px;
+
+  &-icon {
+    transition: transform $animation-duration $animation-easing;
+  }
+
+  &-text {
+    fill: $chart-text;
+    cursor: default;
+    user-select: none;
+  }
+
+  &-item {
+    cursor: pointer;
+
+    &:hover {
+      .cyber-chart__legend-icon {
+        transform: scale(1.2);
+      }
+    }
+
+    &--inactive {
+      opacity: 0.5;
+    }
+  }
+}
+
+// ============================================================================
+// Theme Modifier Classes
+// ============================================================================
+
+.cyber-chart--theme-cyan {
+  --chart-primary: #{$cyber-cyan-500};
+  --chart-primary-light: #{$cyber-cyan-400};
+  --chart-primary-dark: #{$cyber-cyan-600};
+}
+
+.cyber-chart--theme-magenta {
+  --chart-primary: #{$cyber-magenta-500};
+  --chart-primary-light: #{$cyber-magenta-400};
+  --chart-primary-dark: #{$cyber-magenta-600};
+}
+
+.cyber-chart--theme-green {
+  --chart-primary: #{$cyber-green-500};
+  --chart-primary-light: #{$cyber-green-400};
+  --chart-primary-dark: #{$cyber-green-600};
+}
+
+.cyber-chart--theme-yellow {
+  --chart-primary: #{$cyber-yellow-500};
+  --chart-primary-light: #{$cyber-yellow-400};
+  --chart-primary-dark: #{$cyber-yellow-600};
+}
+
+// ============================================================================
+// Glow Effects
+// ============================================================================
+
+@mixin glow-effect($color, $intensity: 1) {
+  filter: drop-shadow(0 0 #{4px * $intensity} rgba($color, 0.6))
+          drop-shadow(0 0 #{8px * $intensity} rgba($color, 0.4))
+          drop-shadow(0 0 #{12px * $intensity} rgba($color, 0.2));
+}
+
+.cyber-chart--glow {
+  .cyber-chart__line {
+    @include glow-effect($cyber-cyan-500);
+  }
+
+  &.cyber-chart--theme-magenta .cyber-chart__line {
+    @include glow-effect($cyber-magenta-500);
+  }
+
+  &.cyber-chart--theme-green .cyber-chart__line {
+    @include glow-effect($cyber-green-500);
+  }
+
+  &.cyber-chart--theme-yellow .cyber-chart__line {
+    @include glow-effect($cyber-yellow-500);
+  }
+}
+
+// ============================================================================
+// Scanlines Effect
+// ============================================================================
+
+.cyber-chart--scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.05) 2px,
+    rgba(0, 0, 0, 0.05) 4px
+  );
+  z-index: 10;
+}
+
+// ============================================================================
+// Animation Keyframes
+// ============================================================================
+
+@keyframes cyber-chart-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes cyber-chart-glow-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 4px currentColor);
+  }
+
+  50% {
+    filter: drop-shadow(0 0 8px currentColor);
+  }
+}
+
+@keyframes cyber-chart-draw {
+  from {
+    stroke-dashoffset: var(--path-length);
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes cyber-chart-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cyber-chart-scale-in {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+// ============================================================================
+// Reduced Motion
+// ============================================================================
+
+@media (prefers-reduced-motion: reduce) {
+  .cyber-chart,
+  .cyber-sparkline {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+// ============================================================================
+// Container Styles
+// ============================================================================
+
+.cyber-chart-container {
+  position: relative;
+  display: inline-block;
+  background: $chart-background;
+  border: 1px solid $cyber-chrome-700;
+  border-radius: 4px;
+  overflow: hidden;
+
+  &--responsive {
+    display: block;
+    width: 100%;
+
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+  }
+
+  // Optional corner accents
+  &--accented {
+    &::before,
+    &::after {
+      content: '';
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border: 1px solid $cyber-cyan-500;
+    }
+
+    &::before {
+      top: -1px;
+      left: -1px;
+      border-right: none;
+      border-bottom: none;
+    }
+
+    &::after {
+      bottom: -1px;
+      right: -1px;
+      border-left: none;
+      border-top: none;
+    }
+  }
+}

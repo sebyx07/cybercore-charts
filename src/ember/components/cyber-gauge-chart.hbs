@@ -1,0 +1,23 @@
+{{!--
+  CyberCore Charts - Ember Gauge Chart Template
+
+  Uses did-insert and did-update modifiers for lifecycle management.
+  Ensure you have @ember/render-modifiers installed or use ember-modifier.
+
+  @example
+  <CyberGaugeChart
+    @value={{this.gaugeValue}}
+    @theme="green"
+    @min={{0}}
+    @max={{100}}
+    @thresholds={{this.thresholds}}
+  />
+--}}
+<div
+  class="cyber-gauge-chart"
+  ...attributes
+  {{did-insert this.setupChart}}
+  {{did-update this.updateChart @value @theme @min @max @startAngle @endAngle @thickness @showValue @formatValue @showMinMax @label @thresholds @showTicks @tickCount @animate @glow @scanlines @responsive @width @height}}
+>
+  {{yield}}
+</div>

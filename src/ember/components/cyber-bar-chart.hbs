@@ -1,0 +1,22 @@
+{{!--
+  CyberCore Charts - Ember Bar Chart Template
+
+  Uses did-insert and did-update modifiers for lifecycle management.
+  Ensure you have @ember/render-modifiers installed or use ember-modifier.
+
+  @example
+  <CyberBarChart
+    @data={{this.chartData}}
+    @theme="magenta"
+    @orientation="vertical"
+    @groupMode="grouped"
+  />
+--}}
+<div
+  class="cyber-bar-chart"
+  ...attributes
+  {{did-insert this.setupChart}}
+  {{did-update this.updateChart @data @theme @orientation @groupMode @borderRadius @barGap @groupGap @animate @glow @scanlines @responsive @xAxis @yAxis @legend @tooltip @showValues @valuePosition @width @height}}
+>
+  {{yield}}
+</div>
