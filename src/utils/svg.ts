@@ -4,7 +4,7 @@
  */
 
 import type { ChartTheme, Point, GlowConfig } from '../types';
-import { getThemeColor, getGlowColor, hexToRGBA } from './colors';
+import { getThemeColor, getGlowColor } from './colors';
 
 // ============================================================================
 // SVG Namespace
@@ -92,9 +92,11 @@ export function createGroup(
 export function pointsToPath(points: Point[], close: boolean = false): string {
   if (points.length === 0) return '';
 
-  let path = `M ${points[0].x} ${points[0].y}`;
+  const first = points[0]!;
+  let path = `M ${first.x} ${first.y}`;
   for (let i = 1; i < points.length; i++) {
-    path += ` L ${points[i].x} ${points[i].y}`;
+    const p = points[i]!;
+    path += ` L ${p.x} ${p.y}`;
   }
 
   if (close) {

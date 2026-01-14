@@ -342,8 +342,8 @@ export function stepPath(points: Point[], position: 'before' | 'after' | 'middle
   let path = `M ${points[0].x} ${points[0].y}`;
 
   for (let i = 1; i < points.length; i++) {
-    const prev = points[i - 1];
-    const curr = points[i];
+    const prev = points[i - 1]!;
+    const curr = points[i]!;
 
     if (position === 'before') {
       path += ` V ${curr.y} H ${curr.x}`;
@@ -384,7 +384,7 @@ export function median(values: number[]): number {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  return sorted.length % 2 !== 0 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
 }
 
 /**

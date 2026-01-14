@@ -8,7 +8,7 @@
   "browser": "dist/cybercore-charts.umd.js",
   "unpkg": "dist/cybercore-charts.umd.min.js",
   "jsdelivr": "dist/cybercore-charts.umd.min.js",
-  "types": "dist/types/index.d.ts",
+  "types": "src/types.ts",
   "files": [
     "dist",
     "src",
@@ -60,7 +60,7 @@
   "scripts": {
     "dev": "vite build --watch",
     "dev:demo": "vite --config demo/vite.config.ts",
-    "build": "npm run build:lib && npm run build:umd && npm run build:umd:min && npm run build:types",
+    "build": "npm run build:lib && npm run build:umd && npm run build:umd:min",
     "build:lib": "vite build",
     "build:umd": "BUILD_UMD=true vite build",
     "build:umd:min": "BUILD_UMD_MIN=true vite build",
