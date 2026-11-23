@@ -4,6 +4,7 @@
  */
 
 import { getThemeColor } from './colors';
+import { safeColor } from './theme';
 
 import type { ChartTheme, Point, GlowConfig } from '../types';
 
@@ -31,15 +32,25 @@ export function createSVGElement<K extends keyof SVGElementTagNameMap>(
   return element;
 }
 
+/** Paint properties that may carry CSS custom properties */
+const PAINT_PROPERTIES = new Set(['fill', 'stroke', 'stop-color', 'flood-color']);
+
 /**
- * Set multiple attributes on an element
+ * Set multiple attributes on an element.
+ * Paint values written as `var(--token, fallback)` go to the inline style,
+ * since presentation attributes do not resolve custom properties.
  */
 export function setAttributes(
   element: Element,
   attributes: Record<string, string | number | undefined>
 ): void {
   for (const [key, value] of Object.entries(attributes)) {
-    if (value !== undefined) {
+    if (value === undefined) {
+      continue;
+    }
+    if (PAINT_PROPERTIES.has(key) && typeof value === 'string' && value.startsWith('var(')) {
+      (element as SVGElement).style.setProperty(key, safeColor(value));
+    } else {
       element.setAttribute(key, String(value));
     }
   }
@@ -66,6 +77,8 @@ export function createSVGRoot(
     class: classPrefix,
     role: 'img',
     'aria-label': ariaLabel,
+    // Geometry is computed left-to-right; keep text anchors stable in RTL pages
+    direction: 'ltr',
     xmlns: SVG_NS,
   });
 }
@@ -302,6 +315,8 @@ export function createText(
     dominantBaseline?: 'auto' | 'middle' | 'hanging' | 'alphabetic';
     className?: string;
     opacity?: number;
+    /** Full text shown on hover, for labels shortened to fit */
+    title?: string;
   } = {}
 ): SVGTextElement {
   const {
@@ -313,6 +328,7 @@ export function createText(
     dominantBaseline = 'middle',
     className,
     opacity,
+    title,
   } = options;
 
   const text = createSVGElement('text', {
@@ -328,7 +344,12 @@ export function createText(
     opacity,
   });
 
-  text.textContent = content;
+  if (title !== undefined && title !== content) {
+    const titleEl = createSVGElement('title');
+    titleEl.textContent = title;
+    text.appendChild(titleEl);
+  }
+  text.appendChild(document.createTextNode(content));
   return text;
 }
 
@@ -370,6 +391,13 @@ export function describeDonutSegment(
   startAngle: number,
   endAngle: number
 ): string {
+  // A full ring has identical start and end points, which SVG arcs cannot
+  // draw; split it into two halves.
+  if (endAngle - startAngle >= 360) {
+    const mid = startAngle + 180;
+    return `${describeDonutSegment(cx, cy, outerRadius, innerRadius, startAngle, mid)} ${describeDonutSegment(cx, cy, outerRadius, innerRadius, mid, startAngle + 360)}`;
+  }
+
   const startRad = (startAngle - 90) * (Math.PI / 180);
   const endRad = (endAngle - 90) * (Math.PI / 180);
 
@@ -465,11 +493,13 @@ export function createRadialGradient(
 }
 
 /**
- * Create a cyberpunk glow filter
+ * Create a cyberpunk glow filter. The glow takes the colour of the element
+ * it is applied to, so one filter serves every theme; the theme parameter
+ * is kept for API compatibility.
  */
 export function createGlowFilter(
   id: string,
-  theme: ChartTheme,
+  _theme: ChartTheme,
   config: GlowConfig = {}
 ): SVGFilterElement {
   const { intensity = 1, blur = 4 } = config;

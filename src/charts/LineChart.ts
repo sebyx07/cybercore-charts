@@ -3,50 +3,83 @@
  * SVG line chart with cyberpunk styling, area fills, and glow effects
  */
 
-import { LAYOUT } from '../constants';
-import { CHART_THEMES, chartColors, getThemeColor } from '../utils/colors';
+import { formatNumber, fitLabel } from '../utils/format';
 import {
+  clamp,
   createBandScale,
   createInvertedScale,
   createLinearScale,
+  cssEasing,
   generateTicks,
   niceExtent,
+  simplifyIndices,
   smoothPath,
   stepPath,
-  simplifyPath,
 } from '../utils/math';
-import { ResponsiveManager } from '../utils/ResponsiveManager';
 import {
-  createSVGRoot,
-  createDefs,
-  createGroup,
-  createPath,
-  createAreaPath,
   createCircle,
+  createGroup,
   createLine,
-  createText,
-  createGlowFilter,
   createLinearGradient,
-  createScanlinesPattern,
+  createPath,
+  createText,
   pointsToPath,
-  clearElement,
-  applyGlowFilter,
 } from '../utils/svg';
+import { uiColors } from '../utils/theme';
 import { TooltipManager } from '../utils/TooltipManager';
 
 import { BaseChart } from './BaseChart';
+import {
+  formatX,
+  hasValue,
+  isPresent,
+  normalizeSeries,
+  pointLabel,
+  seriesPaint,
+  seriesSummary,
+  seriesTable,
+  xKey,
+} from './series';
 
-import type { ChartPadding, DataPoint, DataSeries, LineChartOptions, Point } from '../types';
+import type {
+  ChartPadding,
+  DataPoint,
+  DataSeries,
+  LineChartOptions,
+  LineInterpolation,
+  Point,
+} from '../types';
+import type { ChartDataTable } from '../utils/a11y';
+import type { UndefaultedOptionKeys } from './series';
 
 // ============================================================================
-// Default Options
+// Types and Defaults
 // ============================================================================
 
-const DEFAULT_OPTIONS: Required<Omit<LineChartOptions, 'data'>> = {
+type LineDefaults = Required<Omit<LineChartOptions, 'data' | UndefaultedOptionKeys>>;
+type ResolvedLineOptions = LineDefaults & LineChartOptions;
+
+/** A data point placed on screen */
+interface Plotted extends Point {
+  datum: DataPoint;
+}
+
+interface LineScales {
+  /** Screen x of a point, or null when its x value cannot be placed */
+  xPos: (point: DataPoint) => number | null;
+  yScale: (value: number) => number;
+  yTicks: number[];
+  yMin: number;
+  yMax: number;
+  xTicks: Array<{ x: number; text: string }>;
+  xLabelWidth: number;
+}
+
+const DEFAULT_OPTIONS: LineDefaults = {
   width: 400,
   height: 300,
   padding: { top: 20, right: 20, bottom: 40, left: 50 },
-  theme: 'cyan',
+  theme: 'accent',
   animate: true,
   animation: {
     enabled: true,
@@ -63,7 +96,8 @@ const DEFAULT_OPTIONS: Required<Omit<LineChartOptions, 'data'>> = {
   scanlines: false,
   classPrefix: 'cyber-chart',
   responsive: false,
-  ariaLabel: 'Line chart',
+  dataTable: true,
+  keyboard: true,
   showArea: false,
   areaOpacity: 0.2,
   showPoints: true,
@@ -92,45 +126,49 @@ const DEFAULT_OPTIONS: Required<Omit<LineChartOptions, 'data'>> = {
   simplifyTolerance: 1,
 };
 
+const TICK_FONT_SIZE = 11;
+
+function linePath(points: Point[], interpolation: LineInterpolation): string {
+  if (points.length < 2) {
+    return points.length === 1 ? `M ${points[0].x} ${points[0].y}` : '';
+  }
+  switch (interpolation) {
+    case 'smooth':
+      return smoothPath(points, 0.5);
+    case 'step':
+      return stepPath(points, 'middle');
+    case 'stepBefore':
+      return stepPath(points, 'before');
+    case 'stepAfter':
+      return stepPath(points, 'after');
+    default:
+      return pointsToPath(points);
+  }
+}
+
 // ============================================================================
 // LineChart Class
 // ============================================================================
 
-export class LineChart extends BaseChart<
-  Required<Omit<LineChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] },
-  DataPoint[] | DataSeries[]
-> {
+export class LineChart extends BaseChart<ResolvedLineOptions, DataPoint[] | DataSeries[]> {
   private series: DataSeries[] = [];
-  private tooltipManager: TooltipManager | null = null;
-  private responsiveManager: ResponsiveManager | null = null;
 
   constructor(container: HTMLElement | string, options: LineChartOptions) {
-    // Merge options with defaults before calling super
-    const mergedOptions = LineChart.mergeOptionsStatic(options);
-
-    // Call parent constructor with merged options
-    super(container, mergedOptions, { width: 400, height: 300 });
-
-    // Validate and fix dimensions using BaseChart's method
-    const dims = this.validateDimensions(this.options.width, this.options.height, 'LineChart');
-    this.options.width = dims.width;
-    this.options.height = dims.height;
-
-    // Normalize data to series format
-    this.series = this.normalizeData(this.options.data);
-
-    // Initialize the chart
-    this.init();
+    super(container, LineChart.mergeOptions(options), { width: 400, height: 300 });
+    this.applyDimensions();
+    this.series = normalizeSeries(this.options.data);
+    this.createRoot(this.options.classPrefix, this.options.width, this.options.height);
+    this.createDefinitions();
+    this.render();
+    this.syncResponsive();
   }
 
   // ==========================================================================
-  // Static Option Merging
+  // Options
   // ==========================================================================
 
-  private static mergeOptionsStatic(
-    options: LineChartOptions
-  ): Required<Omit<LineChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] } {
-    const merged = {
+  private static mergeOptions(options: LineChartOptions): ResolvedLineOptions {
+    const merged: ResolvedLineOptions = {
       ...DEFAULT_OPTIONS,
       ...options,
       padding: { ...DEFAULT_OPTIONS.padding, ...options.padding },
@@ -140,124 +178,43 @@ export class LineChart extends BaseChart<
       yAxis: { ...DEFAULT_OPTIONS.yAxis, ...options.yAxis },
       legend: { ...DEFAULT_OPTIONS.legend, ...options.legend },
     };
-
-    // Handle glow config
-    if (typeof options.glow === 'boolean') {
-      merged.glow = options.glow;
-    } else if (options.glow) {
+    if (typeof options.glow === 'object') {
       merged.glow = { enabled: true, ...options.glow };
     }
+    return merged;
+  }
 
-    return merged as Required<Omit<LineChartOptions, 'data'>> & {
-      data: DataPoint[] | DataSeries[];
-    };
+  private applyDimensions(): void {
+    const dims = this.validateDimensions(this.options.width, this.options.height, 'LineChart');
+    this.options.width = dims.width;
+    this.options.height = dims.height;
   }
 
   // ==========================================================================
-  // Instance Option Merging (for setOptions)
+  // Definitions
   // ==========================================================================
-
-  private mergeOptions(
-    options: LineChartOptions
-  ): Required<Omit<LineChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] } {
-    return LineChart.mergeOptionsStatic(options);
-  }
-
-  // ==========================================================================
-  // Initialization
-  // ==========================================================================
-
-  private normalizeData(data: DataPoint[] | DataSeries[]): DataSeries[] {
-    if (data.length === 0) {
-      return [];
-    }
-
-    // Check if it's already series format
-    if ('data' in data[0] && Array.isArray(data[0].data)) {
-      return data as DataSeries[];
-    }
-
-    // Convert single series to array format
-    return [
-      {
-        id: 'series-0',
-        name: 'Series 1',
-        data: data as DataPoint[],
-        theme: this.options.theme,
-      },
-    ];
-  }
-
-  private init(): void {
-    // Clear container
-    clearElement(this.container);
-
-    // Create SVG structure
-    this.createSVG();
-    this.createDefinitions();
-    this.render();
-
-    // Set up responsive behavior using ResponsiveManager
-    if (this.options.responsive) {
-      this.responsiveManager = new ResponsiveManager(
-        this.container,
-        (w, h) => this.resize(w, h),
-        true
-      );
-      this.responsiveManager.setup();
-    }
-
-    // Create tooltip using TooltipManager
-    if (this.options.tooltip.enabled) {
-      this.tooltipManager = new TooltipManager(this.container, this.options.tooltip);
-      this.tooltipManager.create();
-    }
-  }
-
-  private createSVG(): void {
-    this.svg = createSVGRoot(this.options.width, this.options.height, {
-      classPrefix: this.options.classPrefix,
-      ariaLabel: this.options.ariaLabel,
-    });
-
-    this.container.appendChild(this.svg);
-  }
 
   /**
-   * Creates SVG definitions (filters, gradients, patterns).
-   * Implements the abstract method from BaseChart.
+   * Glow filter, scanlines pattern and one area gradient per series.
    */
   protected createDefinitions(): void {
-    if (!this.svg) {
+    if (!this.defs) {
       return;
     }
-
-    this.defs = createDefs();
-    this.svg.appendChild(this.defs);
-
-    // Create glow filter for each theme
-    CHART_THEMES.forEach((theme) => {
-      const glowConfig = typeof this.options.glow === 'object' ? this.options.glow : {};
-      const filter = createGlowFilter(`glow-${theme}`, theme, glowConfig);
-      this.defs!.appendChild(filter);
-    });
-
-    // Create area gradients for each series
+    this.addEffectDefinitions(this.options.glow, this.scanlinesEnabled());
     this.series.forEach((series, index) => {
-      const theme = series.theme || this.options.theme;
-      const color = series.color || getThemeColor(theme);
-      const gradient = createLinearGradient(`area-gradient-${index}`, [
-        { offset: '0%', color, opacity: this.options.areaOpacity },
-        { offset: '100%', color, opacity: 0 },
-      ]);
-      this.defs!.appendChild(gradient);
+      const color = this.colorOf(series, index);
+      this.defs?.appendChild(
+        createLinearGradient(this.ref(`area-${index}`), [
+          { offset: '0%', color, opacity: this.options.areaOpacity },
+          { offset: '100%', color, opacity: 0 },
+        ])
+      );
     });
+  }
 
-    // Create scanlines pattern if enabled
-    if (this.options.scanlines) {
-      const pattern = createScanlinesPattern('scanlines');
-      this.defs.appendChild(pattern);
-    }
+  private colorOf(series: DataSeries, index: number): string {
+    return seriesPaint(series, index, this.series.length, this.options.theme);
   }
 
   // ==========================================================================
@@ -266,493 +223,397 @@ export class LineChart extends BaseChart<
 
   /**
    * Renders the chart.
-   * Implements the abstract method from BaseChart.
    */
   render(): void {
     if (!this.svg) {
       return;
     }
-
-    // Clear existing chart area
-    if (this.chartArea) {
-      this.svg.removeChild(this.chartArea);
-    }
+    const animate = this.takeEntryAnimation();
+    this.resetItems();
+    this.chartArea?.remove();
 
     this.chartArea = createGroup(`${this.options.classPrefix}__area`);
     this.svg.appendChild(this.chartArea);
 
-    // Get chart dimensions
     const padding = this.options.padding as ChartPadding;
-    const chartWidth = this.options.width - padding.left - padding.right;
-    const chartHeight = this.options.height - padding.top - padding.bottom;
+    const chartWidth = Math.max(0, this.options.width - padding.left - padding.right);
+    const chartHeight = Math.max(0, this.options.height - padding.top - padding.bottom);
+    const scales = this.calculateScales(chartWidth, chartHeight);
 
-    // Calculate scales
-    const { xScale, yScale, xLabels } = this.calculateScales(chartWidth, chartHeight);
-
-    // Render axes
     if (this.options.xAxis.show || this.options.yAxis.show) {
-      this.renderAxes(chartWidth, chartHeight, xScale, yScale, xLabels);
+      this.renderAxes(chartWidth, chartHeight, scales);
     }
+    this.renderSeries(scales, animate);
 
-    // Render series
-    this.renderSeries(chartWidth, chartHeight, xScale, yScale);
-
-    // Render legend
     if (this.options.legend.show && this.series.length > 1) {
-      this.renderLegend();
-    }
-
-    // Apply scanlines overlay
-    if (this.options.scanlines) {
-      this.renderScanlines();
-    }
-  }
-
-  private calculateScales(chartWidth: number, chartHeight: number) {
-    // Get all Y values across all series
-    const allYValues: number[] = [];
-    const allXValues: (string | number)[] = [];
-
-    this.series.forEach((series) => {
-      series.data.forEach((point) => {
-        // Filter out invalid Y values (NaN, undefined, null, or non-finite)
-        if (typeof point.y === 'number' && isFinite(point.y)) {
-          allYValues.push(point.y);
-        }
-        if (!allXValues.includes(point.x as string | number)) {
-          allXValues.push(point.x as string | number);
-        }
-      });
-    });
-
-    // Handle empty data case
-    if (allYValues.length === 0) {
-      console.warn('LineChart: No valid Y data points found, using default scale [0, 100]');
-    }
-
-    // Calculate Y extent with nice bounds
-    // Use safe defaults when array is empty to avoid Infinity/-Infinity
-    const yMinValue =
-      allYValues.length > 0 ? Math.min(0, ...allYValues) : (this.options.yAxis.min ?? 0);
-    const yMaxValue =
-      allYValues.length > 0 ? Math.max(...allYValues) : (this.options.yAxis.max ?? 100);
-
-    const [yMin, yMax] = niceExtent(
-      this.options.yAxis.min ?? yMinValue,
-      this.options.yAxis.max ?? yMaxValue,
-      this.options.yAxis.ticks
-    );
-
-    const yScale = createInvertedScale(yMin, yMax, 0, chartHeight);
-
-    // Calculate X scale - categorical or numeric
-    let xScale: (value: string | number) => number;
-    const xLabels: (string | number)[] = allXValues;
-
-    // Handle empty X values
-    if (allXValues.length === 0) {
-      console.warn('LineChart: No X data points found');
-      xScale = () => 0;
-      return { xScale, yScale, xLabels, yMin, yMax };
-    }
-
-    const firstX = allXValues[0];
-    if (typeof firstX === 'number') {
-      const xMin = this.options.xAxis.min ?? Math.min(...(allXValues as number[]));
-      const xMax = this.options.xAxis.max ?? Math.max(...(allXValues as number[]));
-      const linearXScale = createLinearScale(xMin, xMax, 0, chartWidth);
-      xScale = (value: string | number) => linearXScale(value as number);
-    } else {
-      const bandScale = createBandScale(allXValues, 0, chartWidth, 0.1);
-      xScale = (value) => bandScale.scale(value) + bandScale.bandwidth / 2;
-    }
-
-    return { xScale, yScale, xLabels, yMin, yMax };
-  }
-
-  private renderAxes(
-    chartWidth: number,
-    chartHeight: number,
-    xScale: (value: string | number) => number,
-    yScale: (value: number) => number,
-    xLabels: (string | number)[]
-  ): void {
-    if (!this.chartArea) {
-      return;
-    }
-
-    const padding = this.options.padding as ChartPadding;
-    const axisGroup = createGroup(
-      `${this.options.classPrefix}__axes`,
-      `translate(${padding.left}, ${padding.top})`
-    );
-
-    // Y-axis
-    if (this.options.yAxis.show) {
-      const yAxisGroup = createGroup(`${this.options.classPrefix}__y-axis`);
-
-      // Axis line
-      const yAxisLine = createLine(0, 0, 0, chartHeight, {
-        stroke: chartColors.axis,
-        className: `${this.options.classPrefix}__axis-line`,
-      });
-      yAxisGroup.appendChild(yAxisLine);
-
-      // Y ticks and labels
-      const yTicks = generateTicks(
-        this.options.yAxis.min ?? 0,
-        this.options.yAxis.max ?? 100,
-        this.options.yAxis.ticks ?? 5
+      this.renderLegend(
+        this.series.map((series, i) => ({ name: series.name, color: this.colorOf(series, i) })),
+        'line'
       );
+    }
+    if (this.scanlinesEnabled()) {
+      this.chartArea.appendChild(this.createScanlinesOverlay());
+    }
 
-      yTicks.forEach((tick) => {
-        const y = yScale(tick);
+    this.updateAccessibility('Line chart', seriesSummary(this.series, this.options.locale));
+  }
 
-        // Grid line
+  private calculateScales(chartWidth: number, chartHeight: number): LineScales {
+    let dataMin = Infinity;
+    let dataMax = -Infinity;
+    const xs = new Map<string, DataPoint['x']>();
+
+    for (const series of this.series) {
+      for (const point of series.data) {
+        if (!isPresent(point) || !isPresent(point.x)) {
+          continue;
+        }
+        if (hasValue(point)) {
+          dataMin = Math.min(dataMin, point.y);
+          dataMax = Math.max(dataMax, point.y);
+        }
+        const key = xKey(point.x);
+        if (!xs.has(key)) {
+          xs.set(key, point.x);
+        }
+      }
+    }
+
+    const { yAxis, xAxis } = this.options;
+    const hasData = dataMin <= dataMax;
+    const [niceMin, niceMax] = niceExtent(
+      yAxis.min ?? (hasData ? Math.min(0, dataMin) : 0),
+      yAxis.max ?? (hasData ? Math.max(0, dataMax) : 100),
+      yAxis.ticks
+    );
+    const yMin = yAxis.min ?? niceMin;
+    const yMax = yAxis.max ?? niceMax;
+    const yScale = createInvertedScale(yMin, yMax, 0, chartHeight);
+    const yTicks = generateTicks(yMin, yMax, yAxis.ticks).filter(
+      (tick) => tick >= yMin - 1e-9 && tick <= yMax + 1e-9
+    );
+
+    const xValues = [...xs.values()];
+    const first = xValues[0];
+    const isNumeric = typeof first === 'number' || first instanceof Date;
+    let xPos: (point: DataPoint) => number | null;
+
+    if (isNumeric) {
+      const toNumber = (x: DataPoint['x']): number =>
+        x instanceof Date ? x.getTime() : typeof x === 'number' ? x : NaN;
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (const x of xValues) {
+        const n = toNumber(x);
+        if (Number.isFinite(n)) {
+          lo = Math.min(lo, n);
+          hi = Math.max(hi, n);
+        }
+      }
+      lo = xAxis.min ?? lo;
+      hi = xAxis.max ?? hi;
+      if (lo === hi) {
+        // A single x value sits in the middle of the axis
+        lo -= 1;
+        hi += 1;
+      }
+      const scale = createLinearScale(lo, hi, 0, chartWidth);
+      xPos = (point) => {
+        const n = toNumber(point.x);
+        return Number.isFinite(n) ? scale(n) : null;
+      };
+    } else {
+      const band = createBandScale(
+        xValues.map((x) => xKey(x)),
+        0,
+        chartWidth,
+        0.1
+      );
+      xPos = (point) => band.scale(xKey(point.x)) + band.bandwidth / 2;
+    }
+
+    const step = Math.max(1, Math.ceil(xValues.length / (xAxis.ticks || 5)));
+    const xTicks = xValues
+      .filter((_, i) => i % step === 0)
+      .map((x) => ({
+        x: xPos({ x, y: 0 }) ?? 0,
+        text: xAxis.formatLabel
+          ? xAxis.formatLabel(x as number | string)
+          : formatX(x, this.options.locale),
+      }));
+    const xLabelWidth = xTicks.length > 0 ? chartWidth / xTicks.length - 4 : chartWidth;
+
+    return { xPos, yScale, yTicks, yMin, yMax, xTicks, xLabelWidth };
+  }
+
+  private renderAxes(chartWidth: number, chartHeight: number, scales: LineScales): void {
+    const prefix = this.options.classPrefix;
+    const padding = this.options.padding as ChartPadding;
+    const axisGroup = createGroup(`${prefix}__axes`, `translate(${padding.left}, ${padding.top})`);
+    axisGroup.setAttribute('aria-hidden', 'true');
+
+    if (this.options.yAxis.show) {
+      const yAxisGroup = createGroup(`${prefix}__y-axis`);
+      yAxisGroup.appendChild(
+        createLine(0, 0, 0, chartHeight, {
+          stroke: uiColors.axis,
+          className: `${prefix}__axis-line`,
+        })
+      );
+      const format =
+        this.options.yAxis.formatLabel ??
+        ((v: number | string) => formatNumber(Number(v), this.options.locale));
+
+      for (const tick of scales.yTicks) {
+        const y = scales.yScale(tick);
         if (this.options.yAxis.showGrid) {
-          const gridLine = createLine(0, y, chartWidth, y, {
-            stroke: chartColors.grid,
-            strokeDasharray: '4 4',
-            className: `${this.options.classPrefix}__grid-line`,
-          });
-          yAxisGroup.appendChild(gridLine);
+          yAxisGroup.appendChild(
+            createLine(0, y, chartWidth, y, {
+              stroke: uiColors.grid,
+              strokeDasharray: '4 4',
+              className: `${prefix}__grid-line`,
+            })
+          );
         }
-
-        // Tick label
         if (this.options.yAxis.showLabels) {
-          const formatter = this.options.yAxis.formatLabel || String;
-          const label = createText(-10, y, formatter(tick), {
-            fill: chartColors.text,
-            fontSize: 11,
-            textAnchor: 'end',
-            className: `${this.options.classPrefix}__tick-label`,
-          });
-          yAxisGroup.appendChild(label);
+          const text = format(tick);
+          yAxisGroup.appendChild(
+            createText(-10, y, fitLabel(text, padding.left - 12, TICK_FONT_SIZE), {
+              fill: uiColors.text,
+              fontSize: TICK_FONT_SIZE,
+              textAnchor: 'end',
+              className: `${prefix}__tick-label`,
+              title: text,
+            })
+          );
         }
-      });
-
+      }
       axisGroup.appendChild(yAxisGroup);
     }
 
-    // X-axis
     if (this.options.xAxis.show) {
-      const xAxisGroup = createGroup(`${this.options.classPrefix}__x-axis`);
-
-      // Axis line
-      const xAxisLine = createLine(0, chartHeight, chartWidth, chartHeight, {
-        stroke: chartColors.axis,
-        className: `${this.options.classPrefix}__axis-line`,
-      });
-      xAxisGroup.appendChild(xAxisLine);
-
-      // X ticks and labels
-      const labelStep = Math.ceil(xLabels.length / (this.options.xAxis.ticks || 5));
-      xLabels.forEach((label, index) => {
-        if (index % labelStep !== 0 && index !== xLabels.length - 1) {
-          return;
-        }
-
-        const x = xScale(label);
-
-        // Grid line
+      const xAxisGroup = createGroup(`${prefix}__x-axis`);
+      xAxisGroup.appendChild(
+        createLine(0, chartHeight, chartWidth, chartHeight, {
+          stroke: uiColors.axis,
+          className: `${prefix}__axis-line`,
+        })
+      );
+      for (const tick of scales.xTicks) {
         if (this.options.xAxis.showGrid) {
-          const gridLine = createLine(x, 0, x, chartHeight, {
-            stroke: chartColors.grid,
-            strokeDasharray: '4 4',
-            className: `${this.options.classPrefix}__grid-line`,
-          });
-          xAxisGroup.appendChild(gridLine);
+          xAxisGroup.appendChild(
+            createLine(tick.x, 0, tick.x, chartHeight, {
+              stroke: uiColors.grid,
+              strokeDasharray: '4 4',
+              className: `${prefix}__grid-line`,
+            })
+          );
         }
-
-        // Tick label
         if (this.options.xAxis.showLabels) {
-          const formatter = this.options.xAxis.formatLabel || String;
-          const text = createText(x, chartHeight + 20, formatter(label), {
-            fill: chartColors.text,
-            fontSize: 11,
-            className: `${this.options.classPrefix}__tick-label`,
-          });
-          xAxisGroup.appendChild(text);
+          xAxisGroup.appendChild(
+            createText(
+              tick.x,
+              chartHeight + 20,
+              fitLabel(tick.text, scales.xLabelWidth, TICK_FONT_SIZE),
+              {
+                fill: uiColors.text,
+                fontSize: TICK_FONT_SIZE,
+                className: `${prefix}__tick-label`,
+                title: tick.text,
+              }
+            )
+          );
         }
-      });
-
+      }
       axisGroup.appendChild(xAxisGroup);
     }
 
-    this.chartArea.appendChild(axisGroup);
+    this.chartArea?.appendChild(axisGroup);
   }
 
-  private renderSeries(
-    chartWidth: number,
-    chartHeight: number,
-    xScale: (value: string | number) => number,
-    yScale: (value: number) => number
-  ): void {
-    if (!this.chartArea) {
-      return;
+  /**
+   * Splits a series into runs of plottable points. Missing values break the
+   * line unless connectNulls is set.
+   */
+  private plotRuns(series: DataSeries, scales: LineScales): Plotted[][] {
+    const runs: Plotted[][] = [];
+    let run: Plotted[] = [];
+    for (const datum of series.data) {
+      const x = hasValue(datum) ? scales.xPos(datum) : null;
+      if (x === null) {
+        if (!this.options.connectNulls && run.length > 0) {
+          runs.push(run);
+          run = [];
+        }
+        continue;
+      }
+      run.push({ x, y: scales.yScale(datum.y), datum });
     }
+    if (run.length > 0) {
+      runs.push(run);
+    }
+    return runs;
+  }
 
+  /**
+   * Thins runs to at most maxPoints in total: shape-preserving simplification
+   * first, then even sampling if that was not enough.
+   */
+  private reduceRuns(runs: Plotted[][]): Plotted[][] {
+    const { maxPoints, simplifyTolerance } = this.options;
+    const total = runs.reduce((sum, run) => sum + run.length, 0);
+    if (!(maxPoints > 0) || !Number.isFinite(maxPoints) || total <= maxPoints) {
+      return runs;
+    }
+    let reduced = runs.map((run) => simplifyIndices(run, simplifyTolerance).map((i) => run[i]));
+    const remaining = reduced.reduce((sum, run) => sum + run.length, 0);
+    if (remaining > maxPoints) {
+      const every = Math.ceil(remaining / maxPoints);
+      reduced = reduced.map((run) => run.filter((_, i) => i % every === 0));
+    }
+    return reduced;
+  }
+
+  private renderSeries(scales: LineScales, animate: boolean): void {
+    const prefix = this.options.classPrefix;
     const padding = this.options.padding as ChartPadding;
+    const baseline = scales.yScale(clamp(0, scales.yMin, scales.yMax));
+    const single = this.series.length === 1;
 
     this.series.forEach((series, seriesIndex) => {
       if (series.visible === false) {
         return;
       }
+      const group = createGroup(`${prefix}__series`, `translate(${padding.left}, ${padding.top})`);
+      group.setAttribute('data-series-id', series.id);
+      const color = this.colorOf(series, seriesIndex);
+      const runs = this.reduceRuns(this.plotRuns(series, scales));
+      const paths = runs.map((run) => linePath(run, this.options.interpolation));
 
-      const seriesGroup = createGroup(
-        `${this.options.classPrefix}__series`,
-        `translate(${padding.left}, ${padding.top})`
-      );
-      seriesGroup.setAttribute('data-series-id', series.id);
-
-      const theme = series.theme || this.options.theme;
-      const color = series.color || getThemeColor(theme);
-
-      // Convert data points to coordinates
-      let points: Point[] = series.data.map((point) => ({
-        x: xScale(point.x as string | number),
-        y: yScale(point.y),
-      }));
-
-      // Apply point reduction for large datasets to improve performance
-      const maxPoints = this.options.maxPoints;
-      if (maxPoints > 0 && maxPoints !== Infinity && points.length > maxPoints) {
-        points = simplifyPath(points, this.options.simplifyTolerance);
-      }
-
-      // Render area fill
-      if (this.options.showArea && points.length > 0) {
-        const areaPath = createAreaPath(points, chartHeight, {
-          fill: `url(#area-gradient-${seriesIndex})`,
-          className: `${this.options.classPrefix}__area-fill`,
-        });
-        seriesGroup.appendChild(areaPath);
-      }
-
-      // Render line
-      if (points.length > 1) {
-        let pathData: string;
-
-        switch (this.options.interpolation) {
-          case 'smooth':
-            pathData = smoothPath(points, 0.5);
-            break;
-          case 'step':
-            pathData = stepPath(points, 'middle');
-            break;
-          case 'stepBefore':
-            pathData = stepPath(points, 'before');
-            break;
-          case 'stepAfter':
-            pathData = stepPath(points, 'after');
-            break;
-          default:
-            pathData = pointsToPath(points);
+      if (this.options.showArea) {
+        const area = runs
+          .map((run, i) =>
+            run.length < 2
+              ? ''
+              : `${paths[i]} L ${run[run.length - 1].x} ${baseline} L ${run[0].x} ${baseline} Z`
+          )
+          .filter(Boolean)
+          .join(' ');
+        if (area) {
+          const areaPath = createPath(area, {
+            fill: this.url(`area-${seriesIndex}`),
+            stroke: 'none',
+            className: `${prefix}__area-fill`,
+          });
+          areaPath.setAttribute('aria-hidden', 'true');
+          group.appendChild(areaPath);
         }
+      }
 
-        const linePath = createPath(pathData, {
+      if (runs.some((run) => run.length > 1)) {
+        const line = createPath(paths.join(' '), {
           stroke: color,
           strokeWidth: this.options.lineWidth,
-          className: `${this.options.classPrefix}__line`,
+          className: `${prefix}__line`,
         });
-
-        // Apply glow effect
-        if (this.options.glow) {
-          applyGlowFilter(linePath, `glow-${theme}`);
+        line.setAttribute('aria-hidden', 'true');
+        this.applyGlow(line);
+        if (animate) {
+          this.animatePath(line);
         }
-
-        // Add animation
-        if (this.shouldAnimate()) {
-          this.animatePath(linePath);
-        }
-
-        seriesGroup.appendChild(linePath);
+        group.appendChild(line);
       }
 
-      // Render data points
       if (this.options.showPoints) {
-        const pointsGroup = createGroup(`${this.options.classPrefix}__points`);
-
-        points.forEach((point, pointIndex) => {
-          const dataPoint = series.data[pointIndex];
+        const pointsGroup = createGroup(`${prefix}__points`);
+        const plotted = runs.flat();
+        plotted.forEach((point, index) => {
           const circle = createCircle(point.x, point.y, this.options.pointRadius, {
             fill: color,
-            className: `${this.options.classPrefix}__point`,
+            className: `${prefix}__point`,
           });
-
-          // Add hover interaction
-          circle.addEventListener('mouseenter', (e) => {
-            this.handlePointHover(dataPoint, series, e, circle);
-          });
-          circle.addEventListener('mouseleave', () => {
-            this.hideTooltip();
-          });
-          circle.addEventListener('click', (e) => {
-            this.emit('pointClick', {
-              type: 'pointClick',
-              target: circle,
-              data: { point: dataPoint, series },
-              originalEvent: e,
-            });
-          });
-
-          // Add animation delay for staggered effect
-          if (this.shouldAnimate()) {
-            const delay =
-              this.options.animation.delay! + pointIndex * this.options.animation.stagger!;
-            circle.style.opacity = '0';
-            circle.style.transform = 'scale(0)';
-            circle.style.transformOrigin = `${point.x}px ${point.y}px`;
-            circle.style.transition = `opacity ${this.options.animation.duration}ms, transform ${this.options.animation.duration}ms`;
-            circle.style.transitionDelay = `${delay}ms`;
-
-            requestAnimationFrame(() => {
-              circle.style.opacity = '1';
-              circle.style.transform = 'scale(1)';
-            });
+          this.addPointItem(circle, point.datum, series, color, single);
+          if (animate) {
+            this.animatePoint(circle, point, index, plotted.length);
           }
-
           pointsGroup.appendChild(circle);
         });
-
-        seriesGroup.appendChild(pointsGroup);
+        group.appendChild(pointsGroup);
       }
 
-      this.chartArea!.appendChild(seriesGroup);
+      this.chartArea?.appendChild(group);
     });
   }
 
-  private renderLegend(): void {
-    if (!this.svg) {
-      return;
-    }
-
-    const legendGroup = createGroup(`${this.options.classPrefix}__legend`);
-    const { ITEM_SPACING, ICON_SIZE, TOP_MARGIN, RIGHT_MARGIN, ICON_TEXT_GAP } = LAYOUT.LEGEND;
-
-    let startX = this.options.width - RIGHT_MARGIN;
-    const y = TOP_MARGIN;
-
-    // Render in reverse order for right alignment
-    [...this.series].reverse().forEach((series) => {
-      const theme = series.theme || this.options.theme;
-      const color = series.color || getThemeColor(theme);
-
-      // Legend icon (small line)
-      const icon = createLine(
-        startX - ITEM_SPACING + RIGHT_MARGIN,
-        y,
-        startX - ITEM_SPACING + RIGHT_MARGIN + ICON_SIZE,
-        y,
-        {
-          stroke: color,
-          strokeWidth: 2,
-        }
-      );
-      legendGroup.appendChild(icon);
-
-      // Legend text
-      const text = createText(
-        startX - ITEM_SPACING + RIGHT_MARGIN + ICON_SIZE + ICON_TEXT_GAP,
-        y,
-        series.name,
-        {
-          fill: chartColors.text,
-          fontSize: 11,
-          textAnchor: 'start',
-        }
-      );
-      legendGroup.appendChild(text);
-
-      startX -= ITEM_SPACING;
+  private addPointItem(
+    circle: SVGCircleElement,
+    point: DataPoint,
+    series: DataSeries,
+    color: string,
+    single: boolean
+  ): void {
+    const xLabel = pointLabel(point, this.options.locale);
+    const value = formatNumber(point.y, this.options.locale);
+    this.addItem({
+      element: circle,
+      label: single ? `${xLabel}: ${value}` : `${series.name}, ${xLabel}: ${value}`,
+      enter: (event) => {
+        this.emit('pointHover', {
+          type: 'pointHover',
+          target: circle,
+          data: { point, series },
+          originalEvent: event,
+        });
+        const content = this.options.tooltip.formatter
+          ? this.options.tooltip.formatter(point, series)
+          : TooltipManager.createDataPointContent(series.name, color, xLabel, value, 'circle');
+        this.showTooltip(content, circle);
+      },
+      leave: () => this.hideTooltip(),
+      activate: (event) =>
+        this.emit('pointClick', {
+          type: 'pointClick',
+          target: circle,
+          data: { point, series },
+          originalEvent: event,
+        }),
     });
-
-    this.svg.appendChild(legendGroup);
-  }
-
-  private renderScanlines(): void {
-    if (!this.svg) {
-      return;
-    }
-
-    const scanlineRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    scanlineRect.setAttribute('x', '0');
-    scanlineRect.setAttribute('y', '0');
-    scanlineRect.setAttribute('width', String(this.options.width));
-    scanlineRect.setAttribute('height', String(this.options.height));
-    scanlineRect.setAttribute('fill', 'url(#scanlines)');
-    scanlineRect.setAttribute('pointer-events', 'none');
-
-    this.svg.appendChild(scanlineRect);
   }
 
   private animatePath(path: SVGPathElement): void {
-    const length = path.getTotalLength();
+    const length = typeof path.getTotalLength === 'function' ? path.getTotalLength() : 0;
+    if (!(length > 0)) {
+      return;
+    }
+    const { duration, easing } = this.options.animation;
     path.style.strokeDasharray = String(length);
     path.style.strokeDashoffset = String(length);
-    path.style.transition = `stroke-dashoffset ${this.options.animation.duration}ms ${this.options.animation.easing}`;
-
-    // Trigger animation
-    requestAnimationFrame(() => {
+    path.style.transition = `stroke-dashoffset ${duration}ms ${cssEasing(easing)}`;
+    this.nextFrame(() => {
       path.style.strokeDashoffset = '0';
     });
   }
 
-  // ==========================================================================
-  // Tooltip Handling
-  // ==========================================================================
-
-  private handlePointHover(
-    point: DataPoint,
-    series: DataSeries,
-    event: MouseEvent,
-    element: SVGElement
-  ): void {
-    // Emit hover event
-    this.emit('pointHover', {
-      type: 'pointHover',
-      target: element,
-      data: { point, series },
-      originalEvent: event,
+  private animatePoint(circle: SVGCircleElement, point: Point, index: number, count: number): void {
+    const { duration } = this.options.animation;
+    circle.style.opacity = '0';
+    circle.style.transform = 'scale(0)';
+    circle.style.transformOrigin = `${point.x}px ${point.y}px`;
+    circle.style.transition = `opacity ${duration}ms, transform ${duration}ms`;
+    circle.style.transitionDelay = `${this.staggerDelay(index, count)}ms`;
+    this.nextFrame(() => {
+      circle.style.opacity = '1';
+      circle.style.transform = 'scale(1)';
     });
-
-    // Show tooltip using TooltipManager
-    if (this.tooltipManager && this.options.tooltip.enabled) {
-      let content: string | HTMLElement;
-      if (this.options.tooltip.formatter) {
-        // Custom formatters return strings - treat as plain text for safety
-        content = this.options.tooltip.formatter(point, series);
-      } else {
-        const theme = series.theme || this.options.theme;
-        const color = series.color || getThemeColor(theme);
-
-        // Use TooltipManager's helper to create content
-        content = TooltipManager.createDataPointContent(
-          series.name,
-          color,
-          point.label || String(point.x),
-          point.y,
-          'circle'
-        );
-      }
-
-      // Get position relative to the container for tooltip placement
-      const containerRect = this.container.getBoundingClientRect();
-      const padding = this.options.padding as ChartPadding;
-      const circleX = parseFloat(element.getAttribute('cx') || '0') + padding.left;
-      const circleY = parseFloat(element.getAttribute('cy') || '0') + padding.top;
-
-      // TooltipManager expects viewport-relative coordinates
-      this.tooltipManager.show(content, containerRect.left + circleX, containerRect.top + circleY);
-    }
   }
 
-  /**
-   * Hide the tooltip (called on mouseout events)
-   * Overrides the BaseChart method to use TooltipManager
-   */
-  protected override hideTooltip(): void {
-    this.tooltipManager?.hide();
+  protected override getTableData(): ChartDataTable {
+    return seriesTable(
+      this.series,
+      this.options.ariaLabel || 'Line chart',
+      this.options.locale,
+      this.options.xAxis.label
+    );
   }
 
   // ==========================================================================
@@ -763,68 +624,34 @@ export class LineChart extends BaseChart<
    * Update chart with new data
    */
   update(data: DataPoint[] | DataSeries[]): void {
-    this.series = this.normalizeData(data);
     this.options.data = data;
-
-    // Re-create definitions for new data
-    if (this.defs) {
-      clearElement(this.defs);
-      this.createDefinitions();
-    }
-
+    this.series = normalizeSeries(data);
+    this.requestEntryAnimation();
+    this.rebuildDefinitions();
     this.render();
   }
 
   /**
-   * Update chart options
+   * Update chart options. Data, theme, size and effects may all change.
    */
   setOptions(options: Partial<LineChartOptions>): void {
-    this.options = this.mergeOptions({ ...this.options, ...options });
+    this.options = LineChart.mergeOptions({ ...this.options, ...options });
+    if (!this.svg) {
+      return;
+    }
+    this.applyDimensions();
     if (options.data) {
-      this.series = this.normalizeData(options.data);
+      this.series = normalizeSeries(options.data);
+      this.requestEntryAnimation();
     }
-    this.render();
-  }
-
-  /**
-   * Resize chart
-   */
-  resize(width?: number, height?: number): void {
-    if (width) {
-      this.options.width = width;
-    }
-    if (height) {
-      this.options.height = height;
-    }
-
-    // Use inherited helper to update SVG dimensions
-    this.updateSVGDimensions(this.options.width, this.options.height);
-
-    this.render();
-    this.emit('resize', {
-      type: 'resize',
-      target: null,
-      data: { width: this.options.width, height: this.options.height },
-    });
+    this.refresh();
   }
 
   /**
    * Destroy chart and clean up
    */
   override destroy(): void {
-    // Clean up LineChart-specific resources first
-    // Destroy TooltipManager
-    this.tooltipManager?.destroy();
-    this.tooltipManager = null;
-
-    // Destroy ResponsiveManager
-    this.responsiveManager?.destroy();
-    this.responsiveManager = null;
-
-    // Clear series data
     this.series = [];
-
-    // Call parent destroy to clean up base resources
     super.destroy();
   }
 }

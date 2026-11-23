@@ -3,44 +3,63 @@
  * SVG bar chart with vertical/horizontal orientation and cyberpunk styling
  */
 
-import { LAYOUT } from '../constants';
-import { CHART_THEMES, chartColors, getThemeColor } from '../utils/colors';
+import { fitLabel, formatNumber } from '../utils/format';
 import {
-  niceExtent,
-  generateTicks,
+  createBandScale,
   createInvertedScale,
   createLinearScale,
-  createBandScale,
+  generateTicks,
+  niceExtent,
 } from '../utils/math';
-import { ResponsiveManager } from '../utils/ResponsiveManager';
 import {
-  createSVGRoot,
-  createDefs,
   createGroup,
-  createRect,
   createLine,
-  createText,
-  createGlowFilter,
   createLinearGradient,
-  createScanlinesPattern,
-  clearElement,
-  applyGlowFilter,
+  createRect,
+  createText,
 } from '../utils/svg';
+import { uiColors } from '../utils/theme';
 import { TooltipManager } from '../utils/TooltipManager';
 
 import { BaseChart } from './BaseChart';
+import {
+  formatX,
+  hasValue,
+  isPresent,
+  normalizeSeries,
+  pointLabel,
+  seriesPaint,
+  seriesSummary,
+  seriesTable,
+  xKey,
+} from './series';
 
 import type { BarChartOptions, ChartPadding, DataPoint, DataSeries } from '../types';
+import type { ChartDataTable } from '../utils/a11y';
+import type { UndefaultedOptionKeys } from './series';
 
 // ============================================================================
-// Default Options
+// Types and Defaults
 // ============================================================================
 
-const DEFAULT_OPTIONS: Required<Omit<BarChartOptions, 'data'>> = {
+type BarDefaults = Required<Omit<BarChartOptions, 'data' | UndefaultedOptionKeys>>;
+type ResolvedBarOptions = BarDefaults & BarChartOptions;
+
+interface BarScales {
+  categories: Array<{ key: string; text: string }>;
+  /** Start of a category's band */
+  bandStart: (key: string) => number;
+  bandwidth: number;
+  step: number;
+  valueScale: (value: number) => number;
+  ticks: number[];
+}
+
+const DEFAULT_OPTIONS: BarDefaults = {
   width: 400,
   height: 300,
   padding: { top: 20, right: 20, bottom: 40, left: 50 },
-  theme: 'cyan',
+  theme: 'accent',
   animate: true,
   animation: {
     enabled: true,
@@ -57,7 +76,8 @@ const DEFAULT_OPTIONS: Required<Omit<BarChartOptions, 'data'>> = {
   scanlines: false,
   classPrefix: 'cyber-chart',
   responsive: false,
-  ariaLabel: 'Bar chart',
+  dataTable: true,
+  keyboard: true,
   orientation: 'vertical',
   groupMode: 'grouped',
   borderRadius: 2,
@@ -84,46 +104,31 @@ const DEFAULT_OPTIONS: Required<Omit<BarChartOptions, 'data'>> = {
   valuePosition: 'outside',
 };
 
+const TICK_FONT_SIZE = 11;
+
 // ============================================================================
 // BarChart Class
 // ============================================================================
 
-export class BarChart extends BaseChart<
-  Required<Omit<BarChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] },
-  DataPoint[] | DataSeries[]
-> {
+export class BarChart extends BaseChart<ResolvedBarOptions, DataPoint[] | DataSeries[]> {
   private series: DataSeries[] = [];
-  private tooltipManager: TooltipManager | null = null;
-  private responsiveManager: ResponsiveManager | null = null;
 
   constructor(container: HTMLElement | string, options: BarChartOptions) {
-    // Call base constructor with defaults
-    super(container, BarChart.mergeOptionsStatic(options), { width: 400, height: 300 });
-
-    // Validate dimensions using base class method
-    const validatedDimensions = this.validateDimensions(
-      this.options.width,
-      this.options.height,
-      'BarChart'
-    );
-    this.options.width = validatedDimensions.width;
-    this.options.height = validatedDimensions.height;
-
-    // Normalize data to series format
-    this.series = this.normalizeData(this.options.data);
-
-    // Initialize the chart
-    this.init();
+    super(container, BarChart.mergeOptions(options), { width: 400, height: 300 });
+    this.applyDimensions();
+    this.series = normalizeSeries(this.options.data);
+    this.createRoot(this.options.classPrefix, this.options.width, this.options.height);
+    this.createDefinitions();
+    this.render();
+    this.syncResponsive();
   }
 
   // ==========================================================================
-  // Static Option Merging
+  // Options
   // ==========================================================================
 
-  private static mergeOptionsStatic(
-    options: BarChartOptions
-  ): Required<Omit<BarChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] } {
-    const merged = {
+  private static mergeOptions(options: BarChartOptions): ResolvedBarOptions {
+    const merged: ResolvedBarOptions = {
       ...DEFAULT_OPTIONS,
       ...options,
       padding: { ...DEFAULT_OPTIONS.padding, ...options.padding },
@@ -133,114 +138,54 @@ export class BarChart extends BaseChart<
       yAxis: { ...DEFAULT_OPTIONS.yAxis, ...options.yAxis },
       legend: { ...DEFAULT_OPTIONS.legend, ...options.legend },
     };
-
-    if (typeof options.glow === 'boolean') {
-      merged.glow = options.glow;
-    } else if (options.glow) {
+    if (typeof options.glow === 'object') {
       merged.glow = { enabled: true, ...options.glow };
     }
+    return merged;
+  }
 
-    return merged as Required<Omit<BarChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] };
+  private applyDimensions(): void {
+    const dims = this.validateDimensions(this.options.width, this.options.height, 'BarChart');
+    this.options.width = dims.width;
+    this.options.height = dims.height;
+  }
+
+  private isVertical(): boolean {
+    return this.options.orientation !== 'horizontal';
+  }
+
+  private colorOf(series: DataSeries, index: number): string {
+    return seriesPaint(series, index, this.series.length, this.options.theme);
   }
 
   // ==========================================================================
-  // Initialization
+  // Definitions
   // ==========================================================================
 
-  private mergeOptions(
-    options: BarChartOptions
-  ): Required<Omit<BarChartOptions, 'data'>> & { data: DataPoint[] | DataSeries[] } {
-    return BarChart.mergeOptionsStatic(options);
-  }
-
-  private normalizeData(data: DataPoint[] | DataSeries[]): DataSeries[] {
-    if (data.length === 0) {
-      return [];
-    }
-
-    if ('data' in data[0] && Array.isArray(data[0].data)) {
-      return data as DataSeries[];
-    }
-
-    return [
-      {
-        id: 'series-0',
-        name: 'Series 1',
-        data: data as DataPoint[],
-        theme: this.options.theme,
-      },
-    ];
-  }
-
-  private init(): void {
-    clearElement(this.container);
-    this.createSVG();
-    this.createDefinitions();
-    this.render();
-
-    if (this.options.responsive) {
-      this.responsiveManager = new ResponsiveManager(
-        this.container,
-        (width, height) => this.resize(width, height),
-        true
-      );
-      this.responsiveManager.setup();
-    }
-
-    if (this.options.tooltip.enabled) {
-      this.tooltipManager = new TooltipManager(this.container, {
-        enabled: true,
-      });
-      this.tooltipManager.create();
-    }
-  }
-
-  private createSVG(): void {
-    this.svg = createSVGRoot(this.options.width, this.options.height, {
-      classPrefix: this.options.classPrefix,
-      ariaLabel: this.options.ariaLabel,
-    });
-    this.container.appendChild(this.svg);
-  }
-
+  /**
+   * Glow filter, scanlines pattern and one fill gradient per series.
+   */
   protected createDefinitions(): void {
-    if (!this.svg) {
+    if (!this.defs) {
       return;
     }
-
-    this.defs = createDefs();
-    this.svg.appendChild(this.defs);
-
-    // Create glow filters
-    CHART_THEMES.forEach((theme) => {
-      const glowConfig = typeof this.options.glow === 'object' ? this.options.glow : {};
-      const filter = createGlowFilter(`glow-${theme}`, theme, glowConfig);
-      this.defs!.appendChild(filter);
-    });
-
-    // Create gradients for bars
+    this.addEffectDefinitions(this.options.glow, this.scanlinesEnabled());
+    const direction = this.isVertical()
+      ? { x1: '0%', y1: '0%', x2: '0%', y2: '100%' }
+      : { x1: '100%', y1: '0%', x2: '0%', y2: '0%' };
     this.series.forEach((series, index) => {
-      const theme = series.theme || this.options.theme;
-      const color = series.color || getThemeColor(theme);
-      const lightColor = getThemeColor(theme, 400);
-
-      const gradient = createLinearGradient(
-        `bar-gradient-${index}`,
-        [
-          { offset: '0%', color: lightColor },
-          { offset: '100%', color },
-        ],
-        this.options.orientation === 'vertical'
-          ? { x1: '0%', y1: '0%', x2: '0%', y2: '100%' }
-          : { x1: '0%', y1: '0%', x2: '100%', y2: '0%' }
+      const color = this.colorOf(series, index);
+      this.defs?.appendChild(
+        createLinearGradient(
+          this.ref(`bar-${index}`),
+          [
+            { offset: '0%', color, opacity: 1 },
+            { offset: '100%', color, opacity: 0.7 },
+          ],
+          direction
+        )
       );
-      this.defs!.appendChild(gradient);
     });
-
-    if (this.options.scanlines) {
-      const pattern = createScanlinesPattern('scanlines');
-      this.defs.appendChild(pattern);
-    }
   }
 
   // ==========================================================================
@@ -251,446 +196,361 @@ export class BarChart extends BaseChart<
     if (!this.svg) {
       return;
     }
-
-    if (this.chartArea) {
-      this.svg.removeChild(this.chartArea);
-    }
-
+    const animate = this.takeEntryAnimation();
+    this.resetItems();
+    this.chartArea?.remove();
     this.chartArea = createGroup(`${this.options.classPrefix}__area`);
     this.svg.appendChild(this.chartArea);
 
     const padding = this.options.padding as ChartPadding;
-    const chartWidth = this.options.width - padding.left - padding.right;
-    const chartHeight = this.options.height - padding.top - padding.bottom;
+    const chartWidth = Math.max(0, this.options.width - padding.left - padding.right);
+    const chartHeight = Math.max(0, this.options.height - padding.top - padding.bottom);
+    const scales = this.calculateScales(chartWidth, chartHeight);
 
-    const isVertical = this.options.orientation === 'vertical';
-    const { categoryScale, valueScale, categories, bandwidth } = this.calculateScales(
-      chartWidth,
-      chartHeight
-    );
-
-    this.renderAxes(chartWidth, chartHeight, categoryScale, valueScale, categories, isVertical);
-    this.renderBars(chartWidth, chartHeight, categoryScale, valueScale, bandwidth, isVertical);
+    this.renderAxes(chartWidth, chartHeight, scales);
+    this.renderBars(scales, animate);
 
     if (this.options.legend.show && this.series.length > 1) {
-      this.renderLegend();
+      this.renderLegend(
+        this.series.map((series, i) => ({ name: series.name, color: this.colorOf(series, i) })),
+        'square'
+      );
+    }
+    if (this.scanlinesEnabled()) {
+      this.chartArea.appendChild(this.createScanlinesOverlay());
     }
 
-    if (this.options.scanlines) {
-      this.renderScanlines();
-    }
+    this.updateAccessibility('Bar chart', seriesSummary(this.series, this.options.locale));
   }
 
-  private calculateScales(chartWidth: number, chartHeight: number) {
-    // Get all categories and values
-    const categories: (string | number)[] = [];
-    const allValues: number[] = [];
+  /**
+   * Value extent including zero. Stacked bars use per-category positive and
+   * negative totals, since they stack in opposite directions.
+   */
+  private valueExtent(): [number, number] {
+    let min = 0;
+    let max = 0;
+    const positive = new Map<string, number>();
+    const negative = new Map<string, number>();
+    const stacked = this.options.groupMode === 'stacked';
 
-    this.series.forEach((series) => {
-      series.data.forEach((point) => {
-        if (!categories.includes(point.x as string | number)) {
-          categories.push(point.x as string | number);
-        }
-        // Filter out invalid Y values (NaN, undefined, null, or non-finite)
-        if (typeof point.y === 'number' && isFinite(point.y)) {
-          allValues.push(point.y);
-        }
-      });
-    });
-
-    // Handle empty data case
-    if (allValues.length === 0) {
-      console.warn('BarChart: No valid Y data points found, using default scale [0, 100]');
-    }
-
-    const isVertical = this.options.orientation === 'vertical';
-    const categoryDimension = isVertical ? chartWidth : chartHeight;
-    const valueDimension = isVertical ? chartHeight : chartWidth;
-
-    // Category scale (band scale)
-    const { scale: categoryScale, bandwidth } = createBandScale(
-      categories,
-      0,
-      categoryDimension,
-      this.options.groupGap
-    );
-
-    // Value scale
-    // Use safe defaults when array is empty to avoid Infinity/-Infinity
-    const minValue = allValues.length > 0 ? Math.min(0, ...allValues) : 0;
-    const maxValue = allValues.length > 0 ? Math.max(...allValues) : 100;
-
-    const [minVal, maxVal] = niceExtent(minValue, maxValue, this.options.yAxis.ticks);
-
-    const valueScale = isVertical
-      ? createInvertedScale(minVal, maxVal, 0, valueDimension)
-      : createLinearScale(minVal, maxVal, 0, valueDimension);
-
-    return { categoryScale, valueScale, categories, bandwidth, minVal, maxVal };
-  }
-
-  private renderAxes(
-    chartWidth: number,
-    chartHeight: number,
-    categoryScale: (value: string | number) => number,
-    valueScale: (value: number) => number,
-    categories: (string | number)[],
-    isVertical: boolean
-  ): void {
-    if (!this.chartArea) {
-      return;
-    }
-
-    const padding = this.options.padding as ChartPadding;
-    const axisGroup = createGroup(
-      `${this.options.classPrefix}__axes`,
-      `translate(${padding.left}, ${padding.top})`
-    );
-
-    // Value axis (Y for vertical, X for horizontal)
-    const valueAxisConfig = isVertical ? this.options.yAxis : this.options.xAxis;
-    if (valueAxisConfig.show) {
-      const valueAxisGroup = createGroup(`${this.options.classPrefix}__value-axis`);
-
-      // Axis line
-      const axisLine = isVertical
-        ? createLine(0, 0, 0, chartHeight, { stroke: chartColors.axis })
-        : createLine(0, chartHeight, chartWidth, chartHeight, { stroke: chartColors.axis });
-      valueAxisGroup.appendChild(axisLine);
-
-      // Ticks
-      const ticks = generateTicks(0, 100, valueAxisConfig.ticks ?? 5);
-      ticks.forEach((tick) => {
-        const pos = valueScale(tick);
-
-        if (valueAxisConfig.showGrid) {
-          const gridLine = isVertical
-            ? createLine(0, pos, chartWidth, pos, {
-                stroke: chartColors.grid,
-                strokeDasharray: '4 4',
-              })
-            : createLine(pos, 0, pos, chartHeight, {
-                stroke: chartColors.grid,
-                strokeDasharray: '4 4',
-              });
-          valueAxisGroup.appendChild(gridLine);
-        }
-
-        if (valueAxisConfig.showLabels) {
-          const formatter = valueAxisConfig.formatLabel || String;
-          const label = isVertical
-            ? createText(-10, pos, formatter(tick), {
-                fill: chartColors.text,
-                fontSize: 11,
-                textAnchor: 'end',
-              })
-            : createText(pos, chartHeight + 20, formatter(tick), {
-                fill: chartColors.text,
-                fontSize: 11,
-              });
-          valueAxisGroup.appendChild(label);
-        }
-      });
-
-      axisGroup.appendChild(valueAxisGroup);
-    }
-
-    // Category axis (X for vertical, Y for horizontal)
-    const categoryAxisConfig = isVertical ? this.options.xAxis : this.options.yAxis;
-    if (categoryAxisConfig.show) {
-      const categoryAxisGroup = createGroup(`${this.options.classPrefix}__category-axis`);
-
-      const axisLine = isVertical
-        ? createLine(0, chartHeight, chartWidth, chartHeight, { stroke: chartColors.axis })
-        : createLine(0, 0, 0, chartHeight, { stroke: chartColors.axis });
-      categoryAxisGroup.appendChild(axisLine);
-
-      categories.forEach((cat) => {
-        const pos = categoryScale(cat);
-
-        if (categoryAxisConfig.showLabels) {
-          const formatter = categoryAxisConfig.formatLabel || String;
-          const label = isVertical
-            ? createText(pos, chartHeight + 20, formatter(cat), {
-                fill: chartColors.text,
-                fontSize: 11,
-              })
-            : createText(-10, pos, formatter(cat), {
-                fill: chartColors.text,
-                fontSize: 11,
-                textAnchor: 'end',
-              });
-          categoryAxisGroup.appendChild(label);
-        }
-      });
-
-      axisGroup.appendChild(categoryAxisGroup);
-    }
-
-    this.chartArea.appendChild(axisGroup);
-  }
-
-  private renderBars(
-    chartWidth: number,
-    chartHeight: number,
-    categoryScale: (value: string | number) => number,
-    valueScale: (value: number) => number,
-    bandwidth: number,
-    isVertical: boolean
-  ): void {
-    if (!this.chartArea) {
-      return;
-    }
-
-    const padding = this.options.padding as ChartPadding;
-    const barsGroup = createGroup(
-      `${this.options.classPrefix}__bars`,
-      `translate(${padding.left}, ${padding.top})`
-    );
-
-    const seriesCount = this.series.length;
-    const isStacked = this.options.groupMode === 'stacked';
-    const barWidth = isStacked ? bandwidth : (bandwidth * (1 - this.options.barGap)) / seriesCount;
-
-    // Track stacked values for each category
-    const stackedValues: Map<string | number, number> = new Map();
-
-    this.series.forEach((series, seriesIndex) => {
+    for (const series of this.series) {
       if (series.visible === false) {
-        return;
+        continue;
       }
-
-      const theme = series.theme || this.options.theme;
-      const seriesGroup = createGroup(`${this.options.classPrefix}__series`);
-      seriesGroup.setAttribute('data-series-id', series.id);
-
-      series.data.forEach((point, pointIndex) => {
-        const categoryPos = categoryScale(point.x as string | number);
-        const baseValue = isStacked ? stackedValues.get(point.x as string | number) || 0 : 0;
-        const valuePos = valueScale(point.y + baseValue);
-        const zeroPos = valueScale(baseValue);
-
-        let x: number, y: number, width: number, height: number;
-
-        if (isVertical) {
-          const barX = isStacked
-            ? categoryPos - bandwidth / 2
-            : categoryPos -
-              bandwidth / 2 +
-              seriesIndex * barWidth +
-              (bandwidth * this.options.barGap) / 2;
-
-          x = barX;
-          y = Math.min(valuePos, zeroPos);
-          width = barWidth;
-          height = Math.abs(zeroPos - valuePos);
-        } else {
-          const barY = isStacked
-            ? categoryPos - bandwidth / 2
-            : categoryPos -
-              bandwidth / 2 +
-              seriesIndex * barWidth +
-              (bandwidth * this.options.barGap) / 2;
-
-          x = Math.min(valuePos, zeroPos);
-          y = barY;
-          width = Math.abs(valuePos - zeroPos);
-          height = barWidth;
+      for (const point of series.data) {
+        if (!hasValue(point)) {
+          continue;
         }
+        let value = point.y;
+        if (stacked) {
+          const totals = value >= 0 ? positive : negative;
+          const key = xKey(point.x);
+          value += totals.get(key) ?? 0;
+          totals.set(key, value);
+        }
+        min = Math.min(min, value);
+        max = Math.max(max, value);
+      }
+    }
+    return [min, max];
+  }
+
+  private calculateScales(chartWidth: number, chartHeight: number): BarScales {
+    const categories = new Map<string, string>();
+    for (const series of this.series) {
+      for (const point of series.data) {
+        if (isPresent(point) && !categories.has(xKey(point.x))) {
+          categories.set(xKey(point.x), formatX(point.x, this.options.locale));
+        }
+      }
+    }
+
+    const vertical = this.isVertical();
+    const categoryLength = vertical ? chartWidth : chartHeight;
+    const valueLength = vertical ? chartHeight : chartWidth;
+    const keys = [...categories.keys()];
+    const band = createBandScale(keys, 0, categoryLength, this.options.groupGap);
+
+    const valueAxis = vertical ? this.options.yAxis : this.options.xAxis;
+    const [dataMin, dataMax] = this.valueExtent();
+    const [niceMin, niceMax] = niceExtent(dataMin, dataMax, valueAxis.ticks);
+    const min = valueAxis.min ?? niceMin;
+    const max = valueAxis.max ?? niceMax;
+    const valueScale = vertical
+      ? createInvertedScale(min, max, 0, valueLength)
+      : createLinearScale(min, max, 0, valueLength);
+
+    return {
+      categories: keys.map((key) => ({ key, text: categories.get(key) ?? key })),
+      bandStart: (key) => band.scale(key),
+      bandwidth: band.bandwidth,
+      step: keys.length > 0 ? categoryLength / keys.length : categoryLength,
+      valueScale,
+      ticks: generateTicks(min, max, valueAxis.ticks).filter(
+        (tick) => tick >= min - 1e-9 && tick <= max + 1e-9
+      ),
+    };
+  }
+
+  private renderAxes(chartWidth: number, chartHeight: number, scales: BarScales): void {
+    const prefix = this.options.classPrefix;
+    const padding = this.options.padding as ChartPadding;
+    const vertical = this.isVertical();
+    const axisGroup = createGroup(`${prefix}__axes`, `translate(${padding.left}, ${padding.top})`);
+    axisGroup.setAttribute('aria-hidden', 'true');
+    const labelStyle = {
+      fill: uiColors.text,
+      fontSize: TICK_FONT_SIZE,
+      className: `${prefix}__tick-label`,
+    };
+
+    const valueAxis = vertical ? this.options.yAxis : this.options.xAxis;
+    if (valueAxis.show) {
+      const group = createGroup(`${prefix}__value-axis`);
+      group.appendChild(
+        vertical
+          ? createLine(0, 0, 0, chartHeight, { stroke: uiColors.axis })
+          : createLine(0, chartHeight, chartWidth, chartHeight, { stroke: uiColors.axis })
+      );
+      const format =
+        valueAxis.formatLabel ??
+        ((v: number | string) => formatNumber(Number(v), this.options.locale));
+      for (const tick of scales.ticks) {
+        const pos = scales.valueScale(tick);
+        if (valueAxis.showGrid) {
+          group.appendChild(
+            vertical
+              ? createLine(0, pos, chartWidth, pos, {
+                  stroke: uiColors.grid,
+                  strokeDasharray: '4 4',
+                })
+              : createLine(pos, 0, pos, chartHeight, {
+                  stroke: uiColors.grid,
+                  strokeDasharray: '4 4',
+                })
+          );
+        }
+        if (valueAxis.showLabels) {
+          const text = format(tick);
+          group.appendChild(
+            vertical
+              ? createText(-10, pos, fitLabel(text, padding.left - 12, TICK_FONT_SIZE), {
+                  ...labelStyle,
+                  textAnchor: 'end',
+                  title: text,
+                })
+              : createText(pos, chartHeight + 20, text, labelStyle)
+          );
+        }
+      }
+      axisGroup.appendChild(group);
+    }
+
+    const categoryAxis = vertical ? this.options.xAxis : this.options.yAxis;
+    if (categoryAxis.show) {
+      const group = createGroup(`${prefix}__category-axis`);
+      group.appendChild(
+        vertical
+          ? createLine(0, chartHeight, chartWidth, chartHeight, { stroke: uiColors.axis })
+          : createLine(0, 0, 0, chartHeight, { stroke: uiColors.axis })
+      );
+      if (categoryAxis.showLabels) {
+        for (const category of scales.categories) {
+          const pos = scales.bandStart(category.key) + scales.bandwidth / 2;
+          const text = categoryAxis.formatLabel
+            ? categoryAxis.formatLabel(category.text)
+            : category.text;
+          const maxWidth = vertical ? scales.step - 4 : padding.left - 12;
+          group.appendChild(
+            vertical
+              ? createText(pos, chartHeight + 20, fitLabel(text, maxWidth, TICK_FONT_SIZE), {
+                  ...labelStyle,
+                  title: text,
+                })
+              : createText(-10, pos, fitLabel(text, maxWidth, TICK_FONT_SIZE), {
+                  ...labelStyle,
+                  textAnchor: 'end',
+                  title: text,
+                })
+          );
+        }
+      }
+      axisGroup.appendChild(group);
+    }
+
+    this.chartArea?.appendChild(axisGroup);
+  }
+
+  private renderBars(scales: BarScales, animate: boolean): void {
+    const prefix = this.options.classPrefix;
+    const padding = this.options.padding as ChartPadding;
+    const vertical = this.isVertical();
+    const stacked = this.options.groupMode === 'stacked';
+    const barsGroup = createGroup(`${prefix}__bars`, `translate(${padding.left}, ${padding.top})`);
+
+    const visible = this.series.filter((series) => series.visible !== false);
+    const barGap = scales.bandwidth * this.options.barGap;
+    const barThickness = stacked
+      ? scales.bandwidth
+      : (scales.bandwidth - barGap) / Math.max(1, visible.length);
+    const positive = new Map<string, number>();
+    const negative = new Map<string, number>();
+    const zero = scales.valueScale(0);
+    const total = visible.reduce((sum, s) => sum + s.data.length, 0);
+    let order = 0;
+
+    visible.forEach((series, slot) => {
+      const seriesIndex = this.series.indexOf(series);
+      const color = this.colorOf(series, seriesIndex);
+      const group = createGroup(`${prefix}__series`);
+      group.setAttribute('data-series-id', series.id);
+
+      for (const point of series.data) {
+        if (!hasValue(point)) {
+          continue;
+        }
+        const key = xKey(point.x);
+        const totals = point.y >= 0 ? positive : negative;
+        const base = stacked ? (totals.get(key) ?? 0) : 0;
+        if (stacked) {
+          totals.set(key, base + point.y);
+        }
+        const from = scales.valueScale(base);
+        const to = scales.valueScale(base + point.y);
+        const offset = scales.bandStart(key) + (stacked ? 0 : barGap / 2 + slot * barThickness);
+        const valueStart = Math.min(from, to);
+        const length = Math.abs(to - from);
+        const [x, y, width, height] = vertical
+          ? [offset, valueStart, barThickness, length]
+          : [valueStart, offset, length, barThickness];
 
         const rect = createRect(x, y, width, height, {
-          fill: `url(#bar-gradient-${seriesIndex})`,
+          fill: this.url(`bar-${seriesIndex}`),
           rx: this.options.borderRadius,
           ry: this.options.borderRadius,
-          className: `${this.options.classPrefix}__bar`,
+          className: `${prefix}__bar`,
         });
-
-        // Apply glow
-        if (this.options.glow) {
-          applyGlowFilter(rect, `glow-${theme}`);
+        this.applyGlow(rect);
+        this.addBarItem(rect, point, series, color);
+        if (animate) {
+          this.animateBar(
+            rect,
+            vertical,
+            zero,
+            { y, height, width },
+            this.staggerDelay(order, total)
+          );
         }
+        group.appendChild(rect);
+        order++;
 
-        // Add interaction
-        rect.addEventListener('mouseenter', (e) => {
-          this.handleBarHover(point, series, e, rect);
-        });
-        rect.addEventListener('mouseleave', () => {
-          this.tooltipManager?.hide();
-        });
-        rect.addEventListener('click', (e) => {
-          this.emit('barClick', {
-            type: 'barClick',
-            target: rect,
-            data: { point, series },
-            originalEvent: e,
-          });
-        });
-
-        // Add animation
-        if (this.shouldAnimate()) {
-          const delay =
-            this.options.animation.delay! + pointIndex * this.options.animation.stagger!;
-          if (isVertical) {
-            rect.setAttribute('height', '0');
-            rect.setAttribute('y', String(chartHeight));
-            rect.style.transition = `height ${this.options.animation.duration}ms, y ${this.options.animation.duration}ms`;
-            rect.style.transitionDelay = `${delay}ms`;
-
-            requestAnimationFrame(() => {
-              rect.setAttribute('height', String(height));
-              rect.setAttribute('y', String(y));
-            });
-          } else {
-            rect.setAttribute('width', '0');
-            rect.style.transition = `width ${this.options.animation.duration}ms`;
-            rect.style.transitionDelay = `${delay}ms`;
-
-            requestAnimationFrame(() => {
-              rect.setAttribute('width', String(width));
-            });
-          }
-        }
-
-        seriesGroup.appendChild(rect);
-
-        // Add value label
         if (this.options.showValues) {
-          const formatter = this.options.yAxis.formatLabel || String;
-          const labelX = isVertical ? x + width / 2 : x + width + 5;
-          const labelY = isVertical ? y - 5 : y + height / 2;
-
-          const valueLabel = createText(labelX, labelY, formatter(point.y), {
-            fill: chartColors.text,
-            fontSize: 10,
-            textAnchor: isVertical ? 'middle' : 'start',
-          });
-
-          if (this.shouldAnimate()) {
-            valueLabel.style.opacity = '0';
-            valueLabel.style.transition = `opacity ${this.options.animation.duration}ms`;
-            valueLabel.style.transitionDelay = `${this.options.animation.duration}ms`;
-            requestAnimationFrame(() => {
-              valueLabel.style.opacity = '1';
-            });
-          }
-
-          seriesGroup.appendChild(valueLabel);
+          group.appendChild(this.valueLabel(point, x, y, width, height, vertical));
         }
-
-        // Update stacked value
-        if (isStacked) {
-          stackedValues.set(point.x as string | number, baseValue + point.y);
-        }
-      });
-
-      barsGroup.appendChild(seriesGroup);
+      }
+      barsGroup.appendChild(group);
     });
 
-    this.chartArea.appendChild(barsGroup);
+    this.chartArea?.appendChild(barsGroup);
   }
 
-  private renderLegend(): void {
-    if (!this.svg) {
-      return;
-    }
-
-    const legendGroup = createGroup(`${this.options.classPrefix}__legend`);
-    const { ITEM_SPACING, ICON_SIZE, TOP_MARGIN, RIGHT_MARGIN, ICON_TEXT_GAP } = LAYOUT.LEGEND;
-
-    let startX = this.options.width - RIGHT_MARGIN;
-    const y = TOP_MARGIN;
-
-    [...this.series].reverse().forEach((series) => {
-      const theme = series.theme || this.options.theme;
-      const color = series.color || getThemeColor(theme);
-
-      const icon = createRect(
-        startX - ITEM_SPACING + RIGHT_MARGIN,
-        y - ICON_SIZE / 2,
-        ICON_SIZE,
-        ICON_SIZE,
-        {
-          fill: color,
-          rx: 2,
-        }
-      );
-      legendGroup.appendChild(icon);
-
-      const text = createText(
-        startX - ITEM_SPACING + RIGHT_MARGIN + ICON_SIZE + ICON_TEXT_GAP,
-        y,
-        series.name,
-        {
-          fill: chartColors.text,
-          fontSize: 11,
-          textAnchor: 'start',
-        }
-      );
-      legendGroup.appendChild(text);
-
-      startX -= ITEM_SPACING;
-    });
-
-    this.svg.appendChild(legendGroup);
+  private valueLabel(
+    point: DataPoint,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    vertical: boolean
+  ): SVGTextElement {
+    const format =
+      (this.isVertical() ? this.options.yAxis : this.options.xAxis).formatLabel ??
+      ((v: number | string) => formatNumber(Number(v), this.options.locale));
+    const below = point.y < 0;
+    const label = vertical
+      ? createText(x + width / 2, below ? y + height + 10 : y - 6, format(point.y), {
+          fill: uiColors.text,
+          fontSize: 10,
+        })
+      : createText(below ? x - 5 : x + width + 5, y + height / 2, format(point.y), {
+          fill: uiColors.text,
+          fontSize: 10,
+          textAnchor: below ? 'end' : 'start',
+        });
+    label.setAttribute('aria-hidden', 'true');
+    return label;
   }
 
-  private renderScanlines(): void {
-    if (!this.svg) {
-      return;
-    }
-
-    const scanlineRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    scanlineRect.setAttribute('x', '0');
-    scanlineRect.setAttribute('y', '0');
-    scanlineRect.setAttribute('width', String(this.options.width));
-    scanlineRect.setAttribute('height', String(this.options.height));
-    scanlineRect.setAttribute('fill', 'url(#scanlines)');
-    scanlineRect.setAttribute('pointer-events', 'none');
-
-    this.svg.appendChild(scanlineRect);
-  }
-
-  // ==========================================================================
-  // Tooltip Handling
-  // ==========================================================================
-
-  private handleBarHover(
+  private addBarItem(
+    rect: SVGRectElement,
     point: DataPoint,
     series: DataSeries,
-    event: MouseEvent,
-    element: SVGElement
+    color: string
   ): void {
-    this.emit('barHover', {
-      type: 'barHover',
-      target: element,
-      data: { point, series },
-      originalEvent: event,
+    const xLabel = pointLabel(point, this.options.locale);
+    const value = formatNumber(point.y, this.options.locale);
+    this.addItem({
+      element: rect,
+      label:
+        this.series.length === 1 ? `${xLabel}: ${value}` : `${series.name}, ${xLabel}: ${value}`,
+      enter: (event) => {
+        this.emit('barHover', {
+          type: 'barHover',
+          target: rect,
+          data: { point, series },
+          originalEvent: event,
+        });
+        const content = this.options.tooltip.formatter
+          ? this.options.tooltip.formatter(point, series)
+          : TooltipManager.createDataPointContent(series.name, color, xLabel, value, 'square');
+        this.showTooltip(content, rect);
+      },
+      leave: () => this.hideTooltip(),
+      activate: (event) =>
+        this.emit('barClick', {
+          type: 'barClick',
+          target: rect,
+          data: { point, series },
+          originalEvent: event,
+        }),
     });
+  }
 
-    if (this.tooltipManager?.isEnabled()) {
-      let content: HTMLElement | string;
-      if (this.options.tooltip.formatter) {
-        // Custom formatters return strings - treat as plain text for safety
-        content = this.options.tooltip.formatter(point, series);
-      } else {
-        const theme = series.theme || this.options.theme;
-        const color = series.color || getThemeColor(theme);
-
-        // Use TooltipManager's helper for consistent tooltip content
-        content = TooltipManager.createDataPointContent(
-          series.name,
-          color,
-          point.label || String(point.x),
-          point.y,
-          'square' // Use square indicator for bar charts
-        );
-      }
-
-      const barRect = element.getBoundingClientRect();
-      const x = barRect.left + barRect.width / 2;
-      const y = barRect.top;
-      this.tooltipManager.show(content, x, y);
+  /** Grows a bar out of the zero line */
+  private animateBar(
+    rect: SVGRectElement,
+    vertical: boolean,
+    zero: number,
+    final: { y: number; height: number; width: number },
+    delay: number
+  ): void {
+    const { duration } = this.options.animation;
+    if (vertical) {
+      rect.setAttribute('height', '0');
+      rect.setAttribute('y', String(zero));
+      rect.style.transition = `height ${duration}ms, y ${duration}ms`;
+    } else {
+      rect.setAttribute('width', '0');
+      rect.style.transition = `width ${duration}ms, x ${duration}ms`;
     }
+    rect.style.transitionDelay = `${delay}ms`;
+    this.nextFrame(() => {
+      if (vertical) {
+        rect.setAttribute('height', String(final.height));
+        rect.setAttribute('y', String(final.y));
+      } else {
+        rect.setAttribute('width', String(final.width));
+      }
+    });
+  }
+
+  protected override getTableData(): ChartDataTable {
+    return seriesTable(
+      this.series,
+      this.options.ariaLabel || 'Bar chart',
+      this.options.locale,
+      (this.isVertical() ? this.options.xAxis : this.options.yAxis).label
+    );
   }
 
   // ==========================================================================
@@ -702,68 +562,36 @@ export class BarChart extends BaseChart<
    * @param data - New data points or series to display
    */
   update(data: DataPoint[] | DataSeries[]): void {
-    this.series = this.normalizeData(data);
     this.options.data = data;
-
-    if (this.defs) {
-      clearElement(this.defs);
-      this.createDefinitions();
-    }
-
+    this.series = normalizeSeries(data);
+    this.requestEntryAnimation();
+    this.rebuildDefinitions();
     this.render();
   }
 
   /**
-   * Update chart configuration options
+   * Update chart configuration options. Data, theme, size, orientation and
+   * effects may all change.
    * @param options - Partial options object to merge with existing options
    */
   setOptions(options: Partial<BarChartOptions>): void {
-    this.options = this.mergeOptions({ ...this.options, ...options });
+    this.options = BarChart.mergeOptions({ ...this.options, ...options });
+    if (!this.svg) {
+      return;
+    }
+    this.applyDimensions();
     if (options.data) {
-      this.series = this.normalizeData(options.data);
+      this.series = normalizeSeries(options.data);
+      this.requestEntryAnimation();
     }
-    this.render();
-  }
-
-  /**
-   * Resize the chart to new dimensions
-   * @param width - New width in pixels (optional, keeps current if not provided)
-   * @param height - New height in pixels (optional, keeps current if not provided)
-   */
-  resize(width?: number, height?: number): void {
-    if (width) {
-      this.options.width = width;
-    }
-    if (height) {
-      this.options.height = height;
-    }
-
-    this.updateSVGDimensions(this.options.width, this.options.height);
-
-    this.render();
-    this.emit('resize', {
-      type: 'resize',
-      target: null,
-      data: { width: this.options.width, height: this.options.height },
-    });
+    this.refresh();
   }
 
   /**
    * Destroy the chart instance and clean up all resources
-   * Removes DOM elements, disconnects observers, and clears event handlers
    */
   override destroy(): void {
-    // Clean up BarChart-specific resources first
     this.series = [];
-
-    // Clean up managers
-    this.tooltipManager?.destroy();
-    this.tooltipManager = null;
-
-    this.responsiveManager?.destroy();
-    this.responsiveManager = null;
-
-    // Call base class destroy for common cleanup
     super.destroy();
   }
 }

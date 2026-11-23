@@ -1,0 +1,10 @@
+{
+  "repo": "sebyx07/cybercore-charts",
+  "merge": {
+    "reviewGate": "ci-only",
+    "standingAuthorization": true
+  },
+  "policy": {
+    "defaultTier": "GREEN"
+  }
+}

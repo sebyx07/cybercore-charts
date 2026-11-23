@@ -1,0 +1,9 @@
+{
+  // The Ember adapter (src/ember), with the types ember-source ships for @ember/* modules.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["ember-source/types", "node"]
+  },
+  "include": ["src/ember/**/*.ts", "tests/ember/**/*.ts"],
+  "exclude": []
+}

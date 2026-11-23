@@ -10,6 +10,7 @@
 // ============================================================================
 
 export { useChart, useChartInstance } from './useChart';
+export type { ChartHandle } from './useChart';
 
 // ============================================================================
 // Components

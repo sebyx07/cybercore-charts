@@ -1,0 +1,25 @@
+# Build outputs and caches
+dist/
+demo/dist/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+*.min.js
+
+# Package manager files
+package-lock.json
+
+# Agent surface: prettier's markdown rewrapping mangles YAML frontmatter and skill files
+.dz/
+.claude/
+CLAUDE.md
+**/CLAUDE.md
+AGENTS.md
+llms.txt
+**/llms*.txt
+
+# Visual regression baselines
+tests/visual/__snapshots__/
+
+LICENSE

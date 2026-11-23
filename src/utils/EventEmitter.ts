@@ -46,7 +46,7 @@ export class ChartEventEmitter {
    * @param data - The event data to pass to handlers
    */
   protected emit<T = unknown>(event: ChartEventType, data: ChartEvent<T>): void {
-    this.eventHandlers.get(event)?.forEach((handler) => handler(data as ChartEvent));
+    this.eventHandlers.get(event)?.forEach((handler) => handler(data));
   }
 
   /**

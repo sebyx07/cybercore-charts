@@ -12,7 +12,7 @@ import { GaugeChart } from './charts/GaugeChart';
 import { LineChart } from './charts/LineChart';
 import { Sparkline } from './charts/Sparkline';
 
-import type { DefaultDimensions } from './charts/BaseChart';
+import type { ChartItem, DefaultDimensions, LegendEntry } from './charts/BaseChart';
 import type {
   BarChartOptions,
   DonutChartOptions,
@@ -27,7 +27,7 @@ import type {
 
 // Base class for creating custom charts
 export { BaseChart };
-export type { DefaultDimensions };
+export type { ChartItem, DefaultDimensions, LegendEntry };
 
 // Chart implementations
 export { BarChart, DonutChart, GaugeChart, LineChart, Sparkline };
@@ -97,24 +97,17 @@ export function createChart<T extends ChartType>(
   container: HTMLElement | string,
   options: ChartOptionsMap[T]
 ): ChartInstanceMap[T] {
-  const el = typeof container === 'string' ? document.querySelector(container) : container;
-
-  if (!el) {
-    const containerStr = typeof container === 'string' ? container : 'provided element';
-    throw new Error(`Container not found: ${containerStr}`);
-  }
-
   switch (type) {
     case 'line':
-      return new LineChart(el as HTMLElement, options as LineChartOptions) as ChartInstanceMap[T];
+      return new LineChart(container, options as LineChartOptions) as ChartInstanceMap[T];
     case 'bar':
-      return new BarChart(el as HTMLElement, options as BarChartOptions) as ChartInstanceMap[T];
+      return new BarChart(container, options as BarChartOptions) as ChartInstanceMap[T];
     case 'gauge':
-      return new GaugeChart(el as HTMLElement, options as GaugeChartOptions) as ChartInstanceMap[T];
+      return new GaugeChart(container, options as GaugeChartOptions) as ChartInstanceMap[T];
     case 'donut':
-      return new DonutChart(el as HTMLElement, options as DonutChartOptions) as ChartInstanceMap[T];
+      return new DonutChart(container, options as DonutChartOptions) as ChartInstanceMap[T];
     case 'sparkline':
-      return new Sparkline(el as HTMLElement, options as SparklineOptions) as ChartInstanceMap[T];
+      return new Sparkline(container, options as SparklineOptions) as ChartInstanceMap[T];
     default:
       throw new Error(`Unknown chart type: ${type}`);
   }
@@ -196,6 +189,23 @@ export {
   chartColors,
 } from './utils/colors';
 
+// Theme tokens (cybercore-css custom properties with built-in fallbacks)
+export {
+  themeColor,
+  seriesColor,
+  SERIES_PALETTE,
+  uiColors,
+  safeColor,
+  prefersReducedMotion,
+  prefersHighContrast,
+} from './utils/theme';
+export type { ThemeShade } from './utils/theme';
+
+// Formatting and accessibility utilities
+export { formatNumber, formatDate, fitLabel } from './utils/format';
+export { createDataTable, MAX_TABLE_ROWS } from './utils/a11y';
+export type { ChartDataTable } from './utils/a11y';
+
 // Math utilities
 export {
   lerp,
@@ -222,6 +232,10 @@ export {
   calculateControlPoints,
   smoothPath,
   stepPath,
+  simplifyPath,
+  simplifyIndices,
+  downsamplePoints,
+  cssEasing,
   sum,
   mean,
   median,

@@ -1,0 +1,59 @@
+name: Bug report
+description: A chart that draws wrong, throws, leaks or behaves unexpectedly
+labels: [bug]
+body:
+  - type: textarea
+    id: code
+    attributes:
+      label: Minimal code
+      description: The smallest options and data that show the problem. A CodePen, StackBlitz or JSFiddle link is ideal.
+      render: js
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+      description: What the chart should draw or do.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      description: What happens instead. A screenshot helps a lot for rendering bugs; paste the console error if there is one.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: cybercore-charts version
+      description: 'From package.json, or the version in your CDN URL.'
+      placeholder: '0.2.0'
+    validations:
+      required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: How do you use it?
+      options:
+        - npm with a bundler (import from 'cybercore-charts')
+        - CDN <script> tag (the CyberCharts global)
+        - React adapter (cybercore-charts/react)
+        - Ember adapter (cybercore-charts/ember)
+        - Server-side rendering or Node
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Browser, OS and framework version
+      placeholder: 'Firefox 133 on Windows 11, React 19.2, 1440px wide'
+    validations:
+      required: true
+  - type: checkboxes
+    id: a11y
+    attributes:
+      label: Does it affect accessibility?
+      options:
+        - label: Screen-reader output, keyboard access, contrast or reduced motion is affected

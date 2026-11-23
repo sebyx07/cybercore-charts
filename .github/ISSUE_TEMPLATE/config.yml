@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Live demo and chart docs
+    url: https://sebyx07.github.io/cybercore-charts/
+    about: Every chart type with live examples and the code behind them.
+  - name: API reference (also for AI agents)
+    url: https://github.com/sebyx07/cybercore-charts/blob/main/llms.txt
+    about: Every chart, option, method and event in one file.
+  - name: Report a security vulnerability
+    url: https://github.com/sebyx07/cybercore-charts/security/advisories/new
+    about: Please report vulnerabilities privately, not in a public issue.

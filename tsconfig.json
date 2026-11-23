@@ -1,52 +1,32 @@
 {
+  // The library (src/ minus the Ember adapter, which has its own tsconfig.ember.json).
+  // Also the tsconfig the declaration bundler (rolldown-plugin-dts) reads in vite.config.ts.
   "compilerOptions": {
-    /* Language and Environment */
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "useDefineForClassFields": true,
     "jsx": "react-jsx",
 
-    /* Modules */
     "module": "ESNext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "moduleDetection": "force",
+    "verbatimModuleSyntax": true,
 
-    /* Emit */
+    "noEmit": true,
     "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
 
-    /* Type Checking */
     "strict": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": false,
     "noImplicitReturns": true,
     "noImplicitOverride": true,
     "forceConsistentCasingInFileNames": true,
-
-    /* Interop Constraints */
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "verbatimModuleSyntax": true,
-
-    /* Completeness */
     "skipLibCheck": true,
 
-    /* Path Mapping */
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"],
-      "@charts/*": ["src/charts/*"],
-      "@utils/*": ["src/utils/*"]
-    },
-
-    /* Types */
-    "types": ["node", "vite/client"]
+    // The published code runs in browsers: no Node globals.
+    "types": []
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules", "dist", "coverage", "tests", "**/*.test.ts", "src/ember/**/*"]
+  "exclude": ["src/ember/**"]
 }

@@ -1,185 +1,161 @@
 # Contributing to CYBERCORE CHARTS
 
-Thank you for your interest in contributing to CYBERCORE CHARTS. This document
-provides guidelines for contributing to the project.
+Bug reports, ideas and pull requests are welcome, including small ones: a
+one-line fix to a path calculation is a real contribution. AI-assisted
+contributions are welcome too; the same checks apply.
 
-## Code of Conduct
+Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md). Security
+problems go to [SECURITY.md](SECURITY.md), not to a public issue.
 
-Be respectful and constructive. We welcome contributors of all experience
-levels.
+## Setup
 
-## Getting Started
-
-1. Fork the repository
-2. Clone your fork locally
-3. Install dependencies: `npm install`
-4. Create a feature branch: `git checkout -b feature/your-feature`
-
-## Development Workflow
+You need Node (the version in `.nvmrc`, or newer) and npm.
 
 ```bash
-# Start development server
-npm run dev
-
-# Run tests
-npm run test
-
-# Run linter
-npm run lint
-
-# Format code
-npm run format
-
-# Type check
-npm run typecheck
+git clone https://github.com/YOUR_USERNAME/cybercore-charts.git
+cd cybercore-charts
+bin/setup          # installs dependencies (npm ci)
+bin/dev            # demo site with hot reload: http://127.0.0.1:5173/cybercore-charts/
 ```
 
-## Project Structure
+Edit a file under `src/` and the demo updates at once.
 
-```
-src/
-├── charts/     # Chart type implementations
-├── utils/      # Shared utilities
-├── styles/     # Theme and style definitions
-├── types.ts    # TypeScript definitions
-└── index.ts    # Main exports
+## Before you open a pull request
+
+```bash
+bin/check          # the same gate CI runs: guards, lint, formatting, types, tests, build, docs
 ```
 
-## Coding Standards
+`bin/check fast` is the quick version while you iterate, and `bin/check --help`
+lists what each mode runs. If something fails, the last lines name the failing
+command and how to rerun only that step. `npm run lint:fix` and `npm run format`
+fix most style complaints for you. Exit code 75 means your environment is
+missing something (run `bin/setup`), not that your change is wrong.
 
-### TypeScript
+Prefer plain npm? `npm ci`, then `npm run lint && npm test && npm run build`
+covers most of it.
 
-- Use strict TypeScript configuration
-- Provide explicit return types for public functions
-- Use `import type` for type-only imports
-- Document public APIs with JSDoc comments
+Stuck on a failing check you cannot make sense of? Open the pull request anyway
+as a draft and say where you are stuck. The maintainer can help finish it.
 
-### SVG Output
+## What a good change looks like
 
-- All charts must output valid SVG 1.1
-- Use `currentColor` for themeable colors
-- Support both string and element output
-- Ensure SSR compatibility (no DOM dependencies in render path)
+The full rules, with the reasons, are in [`src/CLAUDE.md`](src/CLAUDE.md). The
+short version:
 
-### Testing
+1. **Zero runtime dependencies.** The package installs nothing. Scale, path and
+   colour math lives in `src/utils/`; write the few lines instead of adding a
+   package.
+2. **SVG only, safe to import anywhere.** Charts draw SVG, no canvas. Nothing
+   touches `window` or `document` when the package is imported, so it loads in
+   Node and during server rendering.
+3. **Names are forever.** An export, an option, an event name, a `cyber-chart`
+   class or a custom property that has shipped is public API: add new ones, do
+   not rename or remove existing ones. A new option is optional, and its default
+   keeps existing charts unchanged. `bin/api-diff` shows what a change adds,
+   removes or retypes against the published package.
+4. **Unique ids.** Every `id` a chart writes into its SVG (gradients, filters,
+   clip paths) is unique to that chart instance, so two charts on a page never
+   share one. Try your change on a page with several charts.
+5. **Accessible by default.** A chart keeps its `role="img"` and accessible
+   name, never relies on colour alone, and draws its final state at once under
+   `prefers-reduced-motion: reduce`.
+6. **Themed through tokens.** Colours come from the theme and from
+   `var(--token, fallback)`, so charts follow a
+   [cybercore-css](https://github.com/sebyx07/cybercore-css) theme when it is
+   loaded and look the same without it.
+7. **Cleans up.** Whatever a chart creates (listeners, observers, timers,
+   tooltip elements) is removed by `destroy()`.
 
-- Write unit tests for all public APIs
-- Include visual regression tests for chart output
-- Test both Node.js and browser environments
-- Maintain >80% code coverage
+For a new option, chart or export, also add:
 
-### Code Style
+- a test in `tests/` of what it does (empty data, a single point and equal
+  values included),
+- the prop in the React and Ember adapters (`src/react/`, `src/ember/`),
+- an example in the demo (`demo/src/`),
+- a line in [`llms.txt`](llms.txt) (the reference AI tools read),
+- a line under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md).
 
-- Use Prettier for formatting
-- Follow ESLint rules
-- Use meaningful variable names
-- Keep functions focused and small
+Missing one of these on a first contribution is fine: say so and the maintainer
+adds it.
 
-## Pull Request Process
+Code samples in `README.md` and `llms.txt` are type-checked against the sources
+by `bin/docs-check`, so write them as real code (`data: sales`, not
+`data: [...]`).
 
-1. **Branch**: Create a feature branch from `main`
-2. **Develop**: Make your changes following the coding standards
-3. **Test**: Ensure all tests pass (`npm run test`)
-4. **Lint**: Fix any linting issues (`npm run lint:fix`)
-5. **Commit**: Use clear commit messages
+## Adding a chart type
 
-   ```
-   feat: Add radar chart animation support
-   fix: Correct pie chart label positioning
-   docs: Update API reference for bar chart
-   refactor: Simplify scale calculation logic
-   ```
+A chart is a class that extends the exported `BaseChart`. The base class owns
+the container, the SVG root, per-instance ids, events, keyboard access, the
+accessible name and data table, the tooltip, resizing and cleanup; your class
+draws. In short:
 
-6. **Push**: Push your branch to your fork
-7. **PR**: Open a pull request with a clear description
+1. In the constructor: `super(container, options, { width, height })`, then
+   `createRoot()`, `createDefinitions()`, `render()` and `syncResponsive()`.
+2. In `render()`: draw into the chart area, register every data mark with
+   `addItem({ element, label, enter, leave, activate })` (that is what makes it
+   reachable by keyboard and gives it a tooltip through
+   `showTooltip(content, anchor, event)`), and finish with
+   `updateAccessibility(name, summary)`.
+3. Build every id with `this.ref(name)` and reference it with `this.url(name)`.
+4. Return the data as rows from `getTableData()` for the screen-reader table.
+5. Register the chart: export it from `src/index.ts`, add it to `createChart`
+   and its type maps, to `src/cdn.ts`, to the Ember modifier's maps, and give it
+   a React wrapper.
 
-### PR Description Template
+The full description, with the reasons, is in [`src/CLAUDE.md`](src/CLAUDE.md);
+`src/charts/GaugeChart.ts` is a compact example. Charts written against 0.2.0's
+`BaseChart` (`createTooltip`, `setupResponsive`, `showTooltip(content, x, y)`)
+need the changes listed in the [changelog](CHANGELOG.md).
 
-```markdown
-## Description
+## Pull requests
 
-Brief description of the changes
+1. Branch from `main`; one concern per pull request.
+2. Commit messages follow
+   [Conventional Commits](https://www.conventionalcommits.org) where you can
+   (`fix: clamp the gauge needle`, `feat: add stacked bars`). It is not a reason
+   to reject a pull request.
+3. For a visible change, add a before/after screenshot.
+4. Keep it a draft until it is ready for review.
 
-## Type of Change
+## How pull requests get merged
 
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Breaking change
-- [ ] Documentation update
+This repository is maintained by [developerz.ai](https://developerz.ai). Its
+agent reviews every pull request, may ask for changes, and merges every pull
+request (contributors, members, bots) once you mark it ready for review and the
+`CI OK` check passes. The policy is in
+[`.dz/maintainer/maintainer.yml`](.dz/maintainer/maintainer.yml). Good to know:
 
-## Testing
+- On your first pull request, GitHub waits for a maintainer to approve the CI
+  run. No check results yet means it is waiting for that, not that something is
+  broken.
+- Commit with an email linked to your GitHub account so the contribution is
+  credited to you.
+- Changes to CI, release and publishing automation (`.github/`, `bin/`, `.dz/`,
+  `.claude/`, and the `version`, `scripts`, `files` and `exports` of
+  `package.json`) are made by the owner only. Leave them out of your pull
+  request so the rest can merge.
+- Breaking changes (removing or renaming an export or an option, changing a
+  default, raising the browser or Node floor) are the owner's decision: open an
+  issue first.
 
-- [ ] Unit tests added/updated
-- [ ] Visual tests added/updated
-- [ ] Manual testing performed
+You do not need to do anything for a release. Releases are cut by merging a
+version bump; your change ships in the next one and you are credited in the
+changelog and the README.
 
-## Checklist
+## Reporting bugs and asking for features
 
-- [ ] Code follows project style guidelines
-- [ ] Self-review completed
-- [ ] Documentation updated if needed
-```
+Use the issue forms. For a bug, the most useful thing is the smallest options
+and data that show it, the `cybercore-charts` version, and where it runs
+(browser, framework, server rendering). A screenshot helps for anything visual.
 
-## Adding a New Chart Type
+## Working with AI coding agents
 
-1. Create `src/charts/your-chart.ts`
-2. Implement the chart class extending base chart
-3. Export from `src/charts/index.ts`
-4. Add to main `src/index.ts` exports
-5. Write unit tests in `tests/charts/your-chart.test.ts`
-6. Add visual regression test
-7. Update documentation
-8. Add demo page example
+[`CLAUDE.md`](CLAUDE.md) holds the agent instructions (`AGENTS.md` points at the
+same file): commands, layout, invariants, how to verify a change. Skills and
+reviewer agents live in `.claude/`.
 
-### Chart Implementation Template
+## License
 
-```typescript
-import type { ChartOptions, DataPoint } from '../types';
-import { BaseChart } from './base';
-
-export interface YourChartOptions extends ChartOptions {
-  data: DataPoint[];
-  // chart-specific options
-}
-
-export class YourChart extends BaseChart<YourChartOptions> {
-  constructor(options: YourChartOptions) {
-    super(options);
-  }
-
-  render(): string {
-    // Return SVG string
-  }
-
-  toElement(): SVGElement {
-    // Return SVG element
-  }
-}
-```
-
-## Reporting Bugs
-
-Use GitHub Issues with the following information:
-
-- Clear description of the issue
-- Steps to reproduce
-- Expected vs actual behavior
-- Browser/Node.js version
-- Minimal reproduction code
-
-## Feature Requests
-
-Open a GitHub Issue with:
-
-- Clear description of the feature
-- Use case and motivation
-- Proposed API (if applicable)
-- Willingness to implement
-
-## Questions
-
-For questions, use GitHub Discussions rather than Issues.
-
----
-
-Thank you for contributing to CYBERCORE CHARTS.
+By contributing you agree that your contributions are licensed under the
+[MIT License](LICENSE).

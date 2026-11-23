@@ -1,0 +1,51 @@
+version: 2
+# Weekly, grouped updates. A maintainer (human or agent) merges them on a green "CI OK";
+# there is no auto-merge workflow.
+#
+# cooldown: a release must be 14 days old before it is proposed, so broken or compromised
+# releases are usually yanked first. Security updates skip it.
+#
+# The Playwright Docker image pinned in ci.yml and scripts/visual.sh is not tracked here:
+# bump it together with @playwright/test (same version), then re-render the baselines.
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 10
+    groups:
+      lint:
+        patterns: ['eslint*', '@eslint*', 'typescript-eslint', 'globals', 'prettier']
+      test:
+        patterns: ['vitest', '@vitest/*', '@playwright/test', '@testing-library/*', 'happy-dom']
+      build:
+        patterns: ['vite', 'rolldown', 'rolldown-plugin-dts', 'typescript', '@types/node', 'sass']
+      ember:
+        patterns: ['ember-source', 'ember-modifier']
+      demo:
+        patterns:
+          [
+            'react',
+            'react-dom',
+            'react-router',
+            '@types/react*',
+            '@vitejs/*',
+            'prism-react-renderer',
+            'cybercore-css',
+          ]
+      other:
+        patterns: ['*']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 14
+    groups:
+      github-actions:
+        patterns: ['*']

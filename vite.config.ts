@@ -1,134 +1,95 @@
-import { defineConfig } from 'vite';
-import { resolve } from 'path';
-import dts from 'vite-plugin-dts';
+// Library build, in three modes (`npm run build` runs them all; each writes into dist/):
+//
+//   vite build                  ESM + CJS for the core and the React adapter, ESM for the Ember
+//                               adapter (Ember is ESM-only). Shared code lands in one chunk, so
+//                               the adapters use the same chart classes as the core. Empties dist/.
+//   vite build --mode umd       dist/cybercore-charts.umd.js, global `CyberCharts`, for <script>.
+//   vite build --mode umd-min   the same, minified: the CDN file (`unpkg`/`jsdelivr` field).
+//
+// Declarations come from scripts/build-types.ts (rolldown-plugin-dts cannot bundle declarations
+// inside a CJS output). The package has no runtime dependencies: react, react-dom, ember-source
+// and ember-modifier are optional peers and never bundled.
+import { resolve } from 'node:path';
 
-// Check if we're building the UMD bundle
-const isUMDBuild = process.env.BUILD_UMD === 'true';
+import { defineConfig, type Plugin, type UserConfig } from 'vite';
 
-// UMD build configuration (for CDN distribution)
-const umdConfig = defineConfig({
-  plugins: [],
-  build: {
-    lib: {
-      entry: resolve(__dirname, 'src/cdn.ts'),
-      name: 'CyberCharts',
-      formats: ['umd'],
-      fileName: () => 'cybercore-charts.umd.js',
-    },
-    rollupOptions: {
-      output: {
-        exports: 'default',
-        // Ensure the global name is CyberCharts
-        name: 'CyberCharts',
-        // No external dependencies for UMD - bundle everything
-      },
-    },
-    outDir: 'dist',
-    emptyDir: false, // Don't clean dist since we build multiple times
-    sourcemap: true,
-    minify: false,
-    target: 'ES2020', // Wider browser support for UMD
-  },
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, './src'),
-      '@charts': resolve(__dirname, './src/charts'),
-      '@utils': resolve(__dirname, './src/utils'),
-    },
-  },
-});
+const src = (path: string) => resolve(import.meta.dirname, 'src', path);
 
-// Minified UMD build configuration
-const umdMinConfig = defineConfig({
-  plugins: [],
-  build: {
-    lib: {
-      entry: resolve(__dirname, 'src/cdn.ts'),
-      name: 'CyberCharts',
-      formats: ['umd'],
-      fileName: () => 'cybercore-charts.umd.min.js',
-    },
-    rollupOptions: {
-      output: {
-        exports: 'default',
-        name: 'CyberCharts',
-      },
-    },
-    outDir: 'dist',
-    emptyDir: false,
-    sourcemap: true,
-    minify: 'esbuild',
-    target: 'ES2020',
-  },
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, './src'),
-      '@charts': resolve(__dirname, './src/charts'),
-      '@utils': resolve(__dirname, './src/utils'),
-    },
-  },
-});
+const PEERS = [/^react(\/|$)/, /^react-dom(\/|$)/, /^@ember\//, /^ember-modifier(\/|$)/];
 
-// Main library build configuration (ESM + CJS)
-const mainConfig = defineConfig({
-  plugins: [
-    dts({
-      insertTypesEntry: true,
-      rollupTypes: false,
-      include: ['src/**/*.ts', 'src/**/*.tsx'],
-    }),
-  ],
+// The Ember adapter is published as ESM only: drop its CommonJS entry chunk.
+const esmOnlyEmber: Plugin = {
+  name: 'cybercore:esm-only-ember',
+  generateBundle(options, bundle) {
+    if (options.format !== 'cjs') {
+      return;
+    }
+    for (const fileName of Object.keys(bundle)) {
+      if (fileName.startsWith('ember/')) {
+        delete bundle[fileName];
+      }
+    }
+  },
+};
+
+const library: UserConfig = {
+  plugins: [esmOnlyEmber],
   build: {
     lib: {
       entry: {
-        index: resolve(__dirname, 'src/index.ts'),
-        'react/index': resolve(__dirname, 'src/react/index.ts'),
+        index: src('index.ts'),
+        'react/index': src('react/index.ts'),
+        'ember/index': src('ember/index.ts'),
       },
-      name: 'CybercoreCharts',
       formats: ['es', 'cjs'],
-      fileName: (format, entryName) => {
+      fileName: (format, entry) => {
         const ext = format === 'es' ? 'js' : 'cjs';
-        if (entryName === 'index') {
-          if (format === 'es') {
-            return 'cybercore-charts.esm.js';
-          }
-          return 'cybercore-charts.js';
+        if (entry === 'index') {
+          return format === 'es' ? 'cybercore-charts.esm.js' : 'cybercore-charts.cjs';
         }
-        return `${entryName}.${ext}`;
+        return `${entry}.${ext}`;
       },
     },
-    rollupOptions: {
-      external: ['react', 'react-dom', 'react/jsx-runtime'],
+    rolldownOptions: {
+      external: PEERS,
       output: {
         exports: 'named',
-        preserveModules: false,
-        globals: {
-          react: 'React',
-          'react-dom': 'ReactDOM',
-          'react/jsx-runtime': 'jsxRuntime',
-        },
+        // Next.js App Router imports the React components from Server Components: the directive
+        // marks the entry as a client boundary. Only the entry file, so the shared chunk stays neutral.
+        banner: (chunk) => (chunk.isEntry && chunk.name === 'react/index' ? "'use client';" : ''),
       },
     },
-    sourcemap: true,
-    minify: 'esbuild',
-    target: 'ES2022',
+    // Published unminified: readable as is, and consumers' bundlers map their own output.
+    sourcemap: false,
+    minify: false,
+    target: 'es2022',
   },
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, './src'),
-      '@charts': resolve(__dirname, './src/charts'),
-      '@utils': resolve(__dirname, './src/utils'),
+};
+
+const umd = (minified: boolean): UserConfig => ({
+  build: {
+    emptyOutDir: false,
+    lib: {
+      entry: src('cdn.ts'),
+      name: 'CyberCharts',
+      formats: ['umd'],
+      fileName: () => `cybercore-charts.umd${minified ? '.min' : ''}.js`,
     },
+    rolldownOptions: { output: { exports: 'default' } },
+    // Only the minified CDN file needs a map to be debuggable.
+    sourcemap: minified,
+    minify: minified,
+    target: 'es2020',
   },
 });
 
-// Export the appropriate config based on build type
-export default (() => {
-  if (process.env.BUILD_UMD === 'true') {
-    return umdConfig;
+export default defineConfig(({ mode }) => {
+  switch (mode) {
+    case 'umd':
+      return umd(false);
+    case 'umd-min':
+      return umd(true);
+    default:
+      return library;
   }
-  if (process.env.BUILD_UMD_MIN === 'true') {
-    return umdMinConfig;
-  }
-  return mainConfig;
-})();
+});

@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Public API diff: the exported symbols, their signatures and the members of every exported type
+# and class in this checkout's build, against a published version. The facts come from the
+# TypeScript declarations each package.json "exports" entry names (".", "./react", …), plus the
+# CyberCharts UMD global and the "exports" map itself.
+#
+#   bin/api-diff             against the version npm serves as `latest`
+#   bin/api-diff 0.2.0       against that published version
+#
+# Prints what was removed, what changed signature, new required members of option types, and what
+# was added. Exit: 0 additive only · 1 a removal, a changed signature or a new required option
+# (breaking unless you can show the change only widens an input: needs the owner) · 75
+# environment missing (Node, node_modules, or the registry is unreachable: nothing was compared).
+set -uo pipefail
+# shellcheck source-path=SCRIPTDIR source=_dx.sh
+source "$(dirname "${BASH_SOURCE[0]}")/_dx.sh"
+cd "$ROOT" || exit 1
+
+case "${1:-}" in
+  -h | --help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+esac
+[ "$#" -le 1 ] || { echo "usage: bin/api-diff [version]" >&2; exit 2; }
+
+use_node require
+require_deps
+
+name="$(node -p 'require("./package.json").name')"
+base="${1:-latest}"
+work="$ROOT/tmp/api-diff"
+rm -rf "$work" && mkdir -p "$work/published"
+
+step "build this checkout (npm run build)"
+npm run --silent build || { echo "bin/api-diff: the build failed" >&2; exit 1; }
+
+step "fetch $name@$base from npm"
+tarball="$(cd "$work" && npm pack --silent "$name@$base" 2>/dev/null | tail -n 1)"
+if [ -z "$tarball" ] || [ ! -f "$work/$tarball" ]; then
+  env_missing "could not download $name@$base from the npm registry" "check the network and that the version exists: npm view $name versions"
+fi
+tar -xzf "$work/$tarball" -C "$work/published"
+ok "$tarball"
+
+node bin/_api-surface.mjs "$work/published/package" "$ROOT"
+status=$?
+case "$status" in
+  0) printf '\nbin/api-diff: nothing removed or changed since %s@%s.\n' "$name" "$base" ;;
+  1) printf '\nbin/api-diff: the public API differs from %s@%s in ways that can break callers. Read each line above.\n' "$name" "$base" ;;
+esac
+exit "$status"

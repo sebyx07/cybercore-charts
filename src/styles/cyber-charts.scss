@@ -74,14 +74,17 @@ $cyber-chrome-700: #343a40;
 $cyber-chrome-800: #212529;
 $cyber-chrome-900: #121416;
 
-// Chart-specific colors
-$chart-background: $cyber-void-500;
-$chart-grid: rgba($cyber-chrome-500, 0.2);
-$chart-axis: rgba($cyber-chrome-400, 0.4);
-$chart-text: $cyber-chrome-200;
-$chart-text-muted: $cyber-chrome-400;
-$chart-tooltip-bg: rgba($cyber-void-400, 0.95);
-$chart-tooltip-border: $cyber-chrome-600;
+// Chart-specific colors. Each reads the matching cybercore-css token when the
+// page loads cybercore-css, so [data-theme] and [data-contrast] apply.
+$chart-background: var(--color-bg-primary, #{$cyber-void-500});
+$chart-grid: var(--color-border-default, #{rgba($cyber-chrome-500, 0.2)});
+$chart-axis: var(--color-border-strong, #{rgba($cyber-chrome-400, 0.4)});
+$chart-text: var(--color-text-secondary, #{$cyber-chrome-200});
+$chart-text-muted: var(--color-text-muted, #{$cyber-chrome-400});
+$chart-tooltip-bg: var(--color-bg-elevated, #{rgba($cyber-void-400, 0.95)});
+$chart-tooltip-border: var(--color-border-accent, #{$cyber-chrome-600});
+$chart-accent: var(--color-accent, #{$cyber-cyan-500});
+$chart-focus: var(--focus-ring-color, #ffffff);
 
 // Animation
 $animation-duration: 300ms;
@@ -306,9 +309,7 @@ $animation-easing: cubic-bezier(0.4, 0, 0.2, 1);
   font-size: 12px;
   font-family: inherit;
   color: $chart-text;
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.3),
-    0 0 20px rgba($cyber-cyan-500, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   z-index: 1000;
   opacity: 0;
   transition: opacity 150ms $animation-easing;
@@ -406,8 +407,8 @@ $animation-easing: cubic-bezier(0.4, 0, 0.2, 1);
 
 @mixin glow-effect($color, $intensity: 1) {
   filter: drop-shadow(0 0 #{4px * $intensity} rgba($color, 0.6))
-          drop-shadow(0 0 #{8px * $intensity} rgba($color, 0.4))
-          drop-shadow(0 0 #{12px * $intensity} rgba($color, 0.2));
+    drop-shadow(0 0 #{8px * $intensity} rgba($color, 0.4))
+    drop-shadow(0 0 #{12px * $intensity} rgba($color, 0.2));
 }
 
 .cyber-chart--glow {
@@ -506,20 +507,65 @@ $animation-easing: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 // ============================================================================
-// Reduced Motion
+// Keyboard Focus
 // ============================================================================
 
-@media (prefers-reduced-motion: reduce) {
+.cyber-chart [data-item]:focus {
+  outline: none;
+}
+
+.cyber-chart [data-item]:focus-visible {
+  stroke: $chart-focus;
+  stroke-width: 2;
+}
+
+// ============================================================================
+// Reduced Motion (OS setting or cybercore-css [data-motion="reduce"])
+// ============================================================================
+
+@mixin chart-reduced-motion {
   .cyber-chart,
   .cyber-sparkline {
+    &,
     *,
     *::before,
     *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+      transition-delay: 0s !important;
     }
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @include chart-reduced-motion;
+}
+
+[data-motion='reduce'] {
+  @include chart-reduced-motion;
+}
+
+// ============================================================================
+// High Contrast (OS setting or cybercore-css [data-contrast="high"])
+// Glow halos blur edges; drop them live, without waiting for a re-render.
+// ============================================================================
+
+@mixin chart-high-contrast {
+  .cyber-chart,
+  .cyber-sparkline {
+    [filter] {
+      filter: none;
+    }
+  }
+}
+
+@media (prefers-contrast: more) {
+  @include chart-high-contrast;
+}
+
+[data-contrast='high'] {
+  @include chart-high-contrast;
 }
 
 // ============================================================================
@@ -553,7 +599,7 @@ $animation-easing: cubic-bezier(0.4, 0, 0.2, 1);
       position: absolute;
       width: 8px;
       height: 8px;
-      border: 1px solid $cyber-cyan-500;
+      border: 1px solid $chart-accent;
     }
 
     &::before {

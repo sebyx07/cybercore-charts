@@ -1,22 +1,36 @@
-import { Routes, Route } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+
+import { Route, Routes } from 'react-router';
 
 import Layout from './components/Layout';
 import Home from './pages/Home';
-import LineCharts from './pages/LineCharts';
-import BarCharts from './pages/BarCharts';
-import RadialCharts from './pages/RadialCharts';
-import Realtime from './pages/Realtime';
+import NotFound from './pages/NotFound';
+
+const ChartIndex = lazy(() => import('./pages/ChartIndex'));
+const ChartPage = lazy(() => import('./pages/ChartPage'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Docs = lazy(() => import('./pages/Docs'));
+const OgCard = lazy(() => import('./pages/OgCard'));
 
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Layout />}>
+      <Route element={<Layout />}>
         <Route index element={<Home />} />
-        <Route path="line-charts" element={<LineCharts />} />
-        <Route path="bar-charts" element={<BarCharts />} />
-        <Route path="radial-charts" element={<RadialCharts />} />
-        <Route path="realtime" element={<Realtime />} />
+        <Route path="charts" element={<ChartIndex />} />
+        <Route path="charts/:slug" element={<ChartPage />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="docs" element={<Docs />} />
+        <Route path="*" element={<NotFound />} />
       </Route>
+      <Route
+        path="og"
+        element={
+          <Suspense fallback={null}>
+            <OgCard />
+          </Suspense>
+        }
+      />
     </Routes>
   );
 }
