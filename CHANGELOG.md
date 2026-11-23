@@ -14,6 +14,8 @@ Release notes.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-23
+
 ### Added
 
 - **Accessibility, on by default.** Every chart has a `<title>` and a `<desc>`
@@ -124,8 +126,8 @@ Release notes.
 
 ## [0.2.0] - 2026-01-14
 
-Published without its ES module, CommonJS and type files (see Unreleased,
-Fixed): usable only from the CDN `<script>` tag.
+Published without its ES module, CommonJS and type files (see 0.3.0, Fixed):
+usable only from the CDN `<script>` tag.
 
 ### Added
 
@@ -171,7 +173,8 @@ Initial release.
 - TypeScript types for every option.
 - Demo site and `llms.txt`.
 
-[Unreleased]: https://github.com/sebyx07/cybercore-charts/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/sebyx07/cybercore-charts/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/sebyx07/cybercore-charts/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/sebyx07/cybercore-charts/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/sebyx07/cybercore-charts/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/sebyx07/cybercore-charts/releases/tag/v0.1.0
