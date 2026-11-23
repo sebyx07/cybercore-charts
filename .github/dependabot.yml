@@ -16,6 +16,10 @@ updates:
     cooldown:
       default-days: 14
     open-pull-requests-limit: 10
+    ignore:
+      # @types/node tracks the Node major in .nvmrc (24); move both together.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
     groups:
       lint:
         patterns: ['eslint*', '@eslint*', 'typescript-eslint', 'globals', 'prettier']
