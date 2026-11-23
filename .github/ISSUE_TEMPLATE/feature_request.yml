@@ -1,0 +1,35 @@
+name: Feature request
+description: A new chart type, option, event, theme hook or adapter feature
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to show?
+      description: The data and the chart you want, and what the library is missing for it.
+    validations:
+      required: true
+  - type: textarea
+    id: api
+    attributes:
+      label: The code you would like to write
+      description: Proposed option, method or component names.
+      render: js
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Current workaround
+  - type: dropdown
+    id: deps
+    attributes:
+      label: Can it be done without a new dependency?
+      description: The library has zero runtime dependencies and draws SVG only (no canvas).
+      options: ['Yes', 'No', 'Not sure']
+    validations:
+      required: true
+  - type: checkboxes
+    id: pr
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to send a pull request for this

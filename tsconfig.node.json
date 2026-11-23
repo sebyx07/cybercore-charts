@@ -1,23 +1,25 @@
 {
+  // Root configs and scripts/ (scripts run under Node's type stripping: erasableSyntaxOnly).
+  // Tests have tsconfig.test.json.
   "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2022"],
-    "module": "ESNext",
+    "target": "ES2024",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "module": "Preserve",
     "moduleResolution": "bundler",
+    "moduleDetection": "force",
     "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "moduleDetection": "force",
     "noEmit": true,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "composite": true
+    "types": ["node"]
   },
-  "include": ["vite.config.ts", "vitest.config.ts", "*.config.ts", "*.config.js"]
+  "include": ["*.config.ts", "scripts/**/*.ts"]
 }

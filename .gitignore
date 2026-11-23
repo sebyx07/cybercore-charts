@@ -88,3 +88,7 @@ docs/.vitepress/cache/
 *.pid
 *.seed
 *.pid.lock
+
+# Playwright
+playwright-report/
+test-results/

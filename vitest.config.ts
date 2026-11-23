@@ -1,24 +1,18 @@
 import { defineConfig } from 'vitest/config';
-import { resolve } from 'path';
 
 export default defineConfig({
+  resolve: {
+    // Ember ships its `@ember/*` modules inside ember-source; apps get the mapping from their
+    // build, the Ember adapter tests get it here.
+    alias: [{ find: /^@ember\/(.+)$/, replacement: 'ember-source/@ember/$1/index.js' }],
+  },
   test: {
-    globals: true,
     environment: 'node',
     include: ['tests/**/*.test.ts'],
-    exclude: ['tests/visual/**'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-      exclude: ['node_modules', 'dist', 'demo', 'tests'],
-    },
-    testTimeout: 30000,
-  },
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, './src'),
-      '@charts': resolve(__dirname, './src/charts'),
-      '@utils': resolve(__dirname, './src/utils'),
+      include: ['src/**/*.{ts,tsx}'],
+      reporter: ['text', 'json-summary', 'html'],
     },
   },
 });

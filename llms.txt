@@ -1,388 +1,485 @@
 # cybercore-charts
 
-> Zero-dependency cyberpunk SVG chart library with neon glows and dark themes
+> Zero-dependency SVG chart library with a cyberpunk look: line and area, bar, donut and pie, gauge, sparkline. TypeScript, React and Ember adapters, accessible by default, themed by cybercore-css tokens with built-in fallbacks.
 
-## Installation
+Every code block in this file is type-checked against the library's sources (`bin/docs-check`), so the options, methods and imports shown here exist. Types are the source of truth: `src/types.ts`.
+
+- npm: `cybercore-charts` (version 0.2.0 in this file's CDN URLs)
+- Demo and playgrounds: https://sebyx07.github.io/cybercore-charts/
+- Repository: https://github.com/sebyx07/cybercore-charts
+- Companion CSS framework: https://github.com/sebyx07/cybercore-css
+
+## Rules for generated code
+
+1. A chart needs a container element that exists in the DOM. Pass the element or a CSS selector.
+2. Create charts in the browser, after mount. Importing the package on a server is safe; creating a chart without a DOM throws an error containing "requires a DOM".
+3. Call `chart.destroy()` when the container goes away. The React components and the Ember modifier do it for you.
+4. New data: `chart.update(data)`. New options: `chart.setOptions({ theme: 'magenta' })`. Do not destroy and recreate for either.
+5. `theme` is one of `'accent'` (default), `'cyan'`, `'magenta'`, `'green'`, `'yellow'`. There are no other theme names and no theme factory: restyle with CSS custom properties (see Theming).
+6. Chart types are `'line'`, `'bar'`, `'donut'`, `'gauge'`, `'sparkline'`. An area chart is a line chart with `showArea: true`; a pie is a donut with `innerRadius: 0`. There is no scatter or radar chart.
+7. Give each chart an `ariaLabel` that says what it shows.
+8. Sizes are in pixels. Use `responsive: true` and size the container with CSS to follow the layout.
+
+## Install
 
 ```bash
 npm install cybercore-charts
 ```
 
-## Quick Start
+Entry points:
 
-```javascript
+| Import | Contents |
+|---|---|
+| `cybercore-charts` | `createChart`, the chart classes, types, helpers (ESM and CommonJS) |
+| `cybercore-charts/react` | React components and hooks (React 18 or later, optional peer) |
+| `cybercore-charts/ember` | the `cyberChart` modifier (Ember 5 or later with `ember-modifier` 4 or later, optional peers) |
+| `cybercore-charts/styles` | the optional stylesheet, as SCSS source |
+| `cybercore-charts/umd` | the minified browser bundle that defines the `CyberCharts` global |
+
+## Quick start
+
+```html
+<div id="traffic" style="height: 280px"></div>
+```
+
+```ts
 import { createChart } from 'cybercore-charts';
 
-const chart = createChart('line', '#chart', {
+const chart = createChart('line', '#traffic', {
   data: [
-    { x: 'Jan', y: 10 },
-    { x: 'Feb', y: 25 },
-    { x: 'Mar', y: 15 },
+    { x: 'Mon', y: 12 },
+    { x: 'Tue', y: 30 },
+    { x: 'Wed', y: 18 },
   ],
-  theme: 'cyan',
-  glow: true,
+  ariaLabel: 'Requests per day',
+  showArea: true,
+  responsive: true,
 });
 
-// Update data
-chart.update(newData);
-
-// Cleanup
+chart.update([
+  { x: 'Mon', y: 14 },
+  { x: 'Tue', y: 26 },
+  { x: 'Wed', y: 31 },
+]);
+chart.setOptions({ theme: 'magenta' });
 chart.destroy();
 ```
 
-## API Reference
+`createChart(type, container, options)` returns the chart instance. The classes take the same arguments: `new LineChart(container, options)`.
 
-### createChart(type, container, options)
+## Options shared by line, bar, donut and gauge (`BaseChartOptions`)
 
-Factory function for creating charts. Recommended for vanilla JavaScript.
+| Option | Type | Default | Meaning |
+|---|---|---|---|
+| `width` | number | 400 (donut, gauge: 300) | pixels |
+| `height` | number | 300 | pixels |
+| `padding` | `{ top, right, bottom, left }`, each optional | 20, 20, 40, 50 | space around the plot |
+| `theme` | `ChartTheme` | `'accent'` | chart colour |
+| `animate` | boolean | true | entry animation; always off under reduced motion |
+| `animation` | `AnimationConfig` | | `enabled`, `duration` (ms), `easing`, `delay`, `stagger` |
+| `tooltip` | `TooltipConfig` | enabled | `enabled`, `formatter(point, series)` returning text, `followCursor` |
+| `glow` | boolean or `GlowConfig` | true | neon glow filter; `GlowConfig` has `enabled`, `intensity`, `blur`, `useThemeColor` |
+| `scanlines` | boolean | false | decorative scanline overlay |
+| `classPrefix` | string | `'cyber-chart'` | BEM block of the generated classes |
+| `responsive` | boolean | false | follow the container's size |
+| `ariaLabel` | string | chart name | accessible name (the SVG `<title>`) |
+| `description` | string | generated | accessible description (the SVG `<desc>`) |
+| `dataTable` | boolean | true (gauge: false) | visually hidden data table for screen readers |
+| `keyboard` | boolean | true (gauge: false) | data marks reachable with the keyboard |
+| `locale` | string | runtime locale | BCP 47 locale for numbers and dates |
 
-**Parameters:**
-- `type`: `'line' | 'bar' | 'gauge' | 'donut' | 'sparkline'`
-- `container`: HTMLElement or CSS selector string (e.g., `'#chart'`)
-- `options`: Chart-specific options object
+Easing names: `'linear'`, `'easeIn'`, `'easeOut'`, `'easeInOut'`, `'easeInCubic'`, `'easeOutCubic'`, `'easeInOutCubic'`.
 
-**Returns:** Chart instance with `update()`, `resize()`, `destroy()`, `getSVG()`, `toSVG()`, `on()`, `off()` methods
+## Line chart
 
-### LineChart
-
-```javascript
+```ts
 import { LineChart } from 'cybercore-charts';
+import type { DataSeries } from 'cybercore-charts';
 
-const chart = new LineChart('#container', {
-  data: [{ x: 0, y: 10 }, { x: 1, y: 25 }, { x: 2, y: 15 }],
-  width: 600,
-  height: 400,
-  theme: 'cyan',              // 'cyan' | 'magenta' | 'green' | 'yellow'
-  showArea: true,             // Fill area under line
-  areaOpacity: 0.2,           // Area fill opacity (0-1)
-  showPoints: true,           // Show data points
-  pointRadius: 4,             // Point size
-  lineWidth: 2,               // Line stroke width
-  interpolation: 'smooth',    // 'linear' | 'smooth' | 'step' | 'stepBefore' | 'stepAfter'
-  glow: true,                 // Enable neon glow effect
-  scanlines: false,           // CRT scanlines overlay
-  animate: true,              // Enable animations
-  xAxis: { show: true, showGrid: true, showLabels: true, ticks: 5 },
-  yAxis: { show: true, showGrid: true, showLabels: true, ticks: 5, min: 0, max: 100 },
-  legend: { show: true, position: 'top' },
-  tooltip: { enabled: true },
-  responsive: false,          // Auto-resize on container resize
+const series: DataSeries[] = [
+  {
+    id: 'down',
+    name: 'Download',
+    data: [
+      { x: 'Jan', y: 100 },
+      { x: 'Feb', y: 150 },
+    ],
+  },
+  {
+    id: 'up',
+    name: 'Upload',
+    theme: 'magenta',
+    data: [
+      { x: 'Jan', y: 80 },
+      { x: 'Feb', y: 120 },
+    ],
+  },
+];
+
+const line = new LineChart('#traffic', {
+  data: series,
+  ariaLabel: 'Traffic by month',
+  interpolation: 'smooth',
+  showArea: true,
+  areaOpacity: 0.2,
+  showPoints: true,
+  pointRadius: 4,
+  lineWidth: 2,
+  connectNulls: false,
+  maxPoints: 1000,
+  xAxis: { show: true, showGrid: true, showLabels: true, ticks: 5, label: 'Month' },
+  yAxis: { min: 0, formatLabel: (value) => `${value} GB` },
+  legend: { show: true },
+  tooltip: { formatter: (point, s) => `${s ? s.name : 'Value'}: ${point.y} GB` },
 });
 ```
 
-**Multi-series data:**
-```javascript
-const chart = new LineChart('#container', {
-  data: [
-    { id: 'series-1', name: 'Downloads', data: [{ x: 'Jan', y: 100 }, { x: 'Feb', y: 150 }], theme: 'cyan' },
-    { id: 'series-2', name: 'Uploads', data: [{ x: 'Jan', y: 80 }, { x: 'Feb', y: 120 }], theme: 'magenta' },
-  ],
-});
-```
+| Option | Type | Default |
+|---|---|---|
+| `data` | `DataPoint[]` or `DataSeries[]` | required |
+| `showArea` | boolean | false |
+| `areaOpacity` | number, 0 to 1 | 0.2 |
+| `showPoints` | boolean | true |
+| `pointRadius` | number | 4 |
+| `lineWidth` | number | 2 |
+| `interpolation` | `'linear'`, `'smooth'`, `'step'`, `'stepBefore'`, `'stepAfter'` | `'linear'` |
+| `xAxis`, `yAxis` | `AxisConfig` | shown, 5 ticks |
+| `legend` | `LegendConfig` | shown for several series |
+| `connectNulls` | boolean | false |
+| `maxPoints` | number | 1000 |
+| `simplifyTolerance` | number | 1 |
 
-### BarChart
+- `DataPoint` is `{ x, y, label?, color?, meta? }`; `x` is a number, a string or a `Date`. Dates get a time scale.
+- `DataSeries` is `{ id, name, data, theme?, color?, visible? }`.
+- `AxisConfig`: `show`, `showGrid`, `showLabels`, `min`, `max`, `ticks`, `formatLabel`, `label`. Without `min` and `max` the axis follows the data with rounded ticks.
+- A `y` that is `NaN` or infinite leaves a gap in the line; `connectNulls: true` bridges it.
+- Series longer than `maxPoints` are simplified before drawing; `0` turns that off.
 
-```javascript
+## Bar chart
+
+```ts
 import { BarChart } from 'cybercore-charts';
 
-const chart = new BarChart('#container', {
+const bar = new BarChart('#latency', {
   data: [
-    { x: 'Alpha', y: 45 },
-    { x: 'Beta', y: 72 },
-    { x: 'Gamma', y: 58 },
+    { x: 'api', y: 45 },
+    { x: 'db', y: 72 },
+    { x: 'cache', y: 8 },
   ],
-  width: 600,
-  height: 400,
-  theme: 'magenta',
-  orientation: 'vertical',    // 'vertical' | 'horizontal'
-  groupMode: 'grouped',       // 'grouped' | 'stacked' (for multi-series)
-  borderRadius: 4,            // Bar corner radius
-  barGap: 0.2,                // Gap between bars (0-1)
-  showValues: true,           // Show value labels
-  valuePosition: 'outside',   // 'inside' | 'outside' | 'center'
-  glow: true,
-  animate: true,
+  ariaLabel: 'Latency by service, in milliseconds',
+  orientation: 'horizontal',
+  groupMode: 'grouped',
+  borderRadius: 2,
+  barGap: 0.1,
+  groupGap: 0.2,
+  showValues: true,
+  valuePosition: 'outside',
 });
 ```
 
-### GaugeChart
+| Option | Type | Default |
+|---|---|---|
+| `data` | `DataPoint[]` or `DataSeries[]` | required |
+| `orientation` | `'vertical'`, `'horizontal'` | `'vertical'` |
+| `groupMode` | `'grouped'`, `'stacked'` | `'grouped'` |
+| `borderRadius` | number | 2 |
+| `barGap` | number, 0 to 1 | 0.1 |
+| `groupGap` | number, 0 to 1 | 0.2 |
+| `showValues` | boolean | false |
+| `valuePosition` | `'inside'`, `'outside'`, `'center'` | `'outside'` |
+| `xAxis`, `yAxis`, `legend` | as for the line chart | |
 
-```javascript
+## Donut and pie chart
+
+```ts
+import { DonutChart } from 'cybercore-charts';
+
+const donut = new DonutChart('#storage', {
+  data: [
+    { label: 'Logs', value: 35 },
+    { label: 'Media', value: 25, theme: 'magenta' },
+    { label: 'Backups', value: 40, color: '#ffb000' },
+  ],
+  ariaLabel: 'Storage by kind',
+  innerRadius: 0.6,
+  segmentGap: 2,
+  showLabels: true,
+  showPercentages: true,
+  centerText: '100 GB',
+  centerSubtext: 'used',
+  sortSegments: 'desc',
+});
+
+donut.getTotal();
+```
+
+| Option | Type | Default |
+|---|---|---|
+| `data` | `DonutSegment[]`: `{ label, value, color?, theme?, meta? }` | required |
+| `innerRadius` | number, 0 (pie) to below 1 | 0.6 |
+| `segmentGap` | degrees | 2 |
+| `showLabels` | boolean | true |
+| `labelPosition` | `'inside'`, `'outside'` | `'outside'` |
+| `showPercentages` | boolean | true |
+| `centerText`, `centerSubtext` | string | empty |
+| `startAngle` | degrees | -90 |
+| `sortSegments` | boolean, `'asc'`, `'desc'` | false |
+| `legend` | `LegendConfig` | shown |
+
+## Gauge
+
+```ts
 import { GaugeChart } from 'cybercore-charts';
 
-const chart = new GaugeChart('#container', {
+const gauge = new GaugeChart('#load', {
   value: 72,
   min: 0,
   max: 100,
-  width: 300,
-  height: 200,
-  theme: 'green',
-  label: 'CPU Usage',
-  showValue: true,            // Show value in center
-  showMinMax: true,           // Show min/max labels
-  startAngle: -135,           // Arc start angle
-  endAngle: 135,              // Arc end angle
-  thickness: 20,              // Arc thickness
-  showTicks: true,            // Show tick marks
+  label: 'CPU load',
+  ariaLabel: 'CPU load',
+  thickness: 20,
+  showTicks: true,
   tickCount: 10,
-  thresholds: [               // Color zones
+  thresholds: [
     { value: 60, theme: 'green' },
-    { value: 80, theme: 'yellow' },
+    { value: 85, theme: 'yellow' },
     { value: 100, theme: 'magenta' },
   ],
-  formatValue: (v) => `${v}%`,
-  glow: true,
-  animate: true,
+  formatValue: (value) => `${Math.round(value)}%`,
 });
+
+gauge.update(81);
+gauge.getValue();
 ```
 
-### DonutChart
+| Option | Type | Default |
+|---|---|---|
+| `value` | number | required |
+| `min`, `max` | number | 0, 100 |
+| `startAngle`, `endAngle` | degrees | -135, 135 |
+| `thickness` | number | 20 |
+| `showValue` | boolean | true |
+| `formatValue` | `(value) => string` | rounded number |
+| `showMinMax` | boolean | true |
+| `label` | string | empty |
+| `thresholds` | `GaugeThreshold[]`: `{ value, color?, theme?, label? }` | none |
+| `showTicks`, `tickCount` | boolean, number | true, 10 |
 
-```javascript
-import { DonutChart } from 'cybercore-charts';
+`update()` takes the new value. The gauge is exposed to assistive technology as a meter.
 
-const chart = new DonutChart('#container', {
-  data: [
-    { label: 'Sector A', value: 35, theme: 'cyan' },
-    { label: 'Sector B', value: 25, theme: 'magenta' },
-    { label: 'Sector C', value: 40, theme: 'green' },
-  ],
-  width: 400,
-  height: 400,
-  innerRadius: 0.6,           // 0 = pie, 0.5+ = donut
-  segmentGap: 2,              // Gap between segments (degrees)
-  showLabels: true,
-  labelPosition: 'outside',   // 'inside' | 'outside'
-  showPercentages: true,
-  centerText: 'Total',        // Text in donut center
-  centerSubtext: '100',
-  startAngle: 0,
-  sortSegments: 'desc',       // true | 'asc' | 'desc'
-  legend: { show: true, position: 'right' },
-  glow: true,
-  animate: true,
-});
-```
+## Sparkline
 
-### Sparkline
-
-```javascript
+```ts
 import { Sparkline } from 'cybercore-charts';
 
-const chart = new Sparkline('#container', {
-  data: [5, 10, 8, 15, 12, 18, 14],  // Simple number array
+const spark = new Sparkline('#trend', {
+  data: [5, 10, 8, 15, 12, 18, 14],
+  ariaLabel: 'Sign-ups, last 7 days',
   width: 120,
-  height: 30,
-  theme: 'yellow',
-  color: '#f0ff00',           // Custom color override
+  height: 32,
   lineWidth: 1.5,
-  showArea: false,
-  areaOpacity: 0.2,
-  showEndPoint: true,         // Highlight last value
-  showMinMax: false,          // Highlight min/max points
-  interpolation: 'smooth',    // 'linear' | 'smooth'
-  glow: true,
-  animate: true,
-  animationDuration: 500,
+  showArea: true,
+  showEndPoint: true,
+  showMinMax: false,
+  interpolation: 'smooth',
+});
+
+spark.getStats();
+```
+
+`SparklineOptions` is its own, smaller set: `data` (numbers, required), `width` (120), `height` (32), `theme`, `color`, `lineWidth` (1.5), `showArea` (false), `areaOpacity` (0.2), `showEndPoint` (true), `showMinMax` (false), `glow` (true), `interpolation` (`'linear'` or `'smooth'`), `animate` (true), `animationDuration` (500), `ariaLabel`, `description`, `locale`. `getStats()` returns `{ min, max, first, last, trend }`; `getData()` returns the numbers.
+
+## Instance methods
+
+Every chart has these:
+
+| Method | Does |
+|---|---|
+| `update(data)` | draws new data (the gauge takes a number) |
+| `setOptions(options)` | changes options in place |
+| `resize(width, height)` | sets a new size; both arguments optional |
+| `getSVG()` | the `SVGSVGElement` |
+| `toSVG()` | the chart as an SVG string |
+| `on(event, handler)` | subscribes |
+| `off(event, handler)` | unsubscribes; without a handler, every handler of that event |
+| `destroy()` | removes the chart and everything it created |
+
+## Events
+
+```ts
+import { createChart } from 'cybercore-charts';
+import type { ChartEvent, DataPoint, DataSeries } from 'cybercore-charts';
+
+const chart = createChart('bar', '#latency', { data: [{ x: 'api', y: 45 }] });
+
+chart.on('barClick', (event: ChartEvent<{ point: DataPoint; series: DataSeries }>) => {
+  console.log(event.data.point.x, event.data.point.y, event.data.series.name);
 });
 ```
 
-## Chart Instance Methods
+| Event | Emitted by | `event.data` |
+|---|---|---|
+| `pointHover`, `pointClick` | line | `{ point, series }` |
+| `barHover`, `barClick` | bar | `{ point, series }` |
+| `segmentHover`, `segmentClick` | donut | the `DonutSegment` |
+| `resize` | every chart | the new size |
 
-All charts provide these methods:
+`legendClick` is in the `ChartEventType` union and is not emitted by any chart yet. A click event also fires for Enter and Space on a focused mark; `event.originalEvent` is then undefined.
 
-```javascript
-chart.update(newData);                    // Update with new data
-chart.setOptions({ theme: 'magenta' });   // Update options
-chart.resize(800, 600);                   // Resize chart
-chart.getSVG();                           // Get SVGSVGElement
-chart.toSVG();                            // Export as SVG string
-chart.on('pointClick', handler);          // Add event listener
-chart.off('pointClick', handler);         // Remove event listener
-chart.destroy();                          // Cleanup and remove
-```
+## React
 
-**Events:** `'pointHover'`, `'pointClick'`, `'segmentHover'`, `'segmentClick'`, `'barHover'`, `'barClick'`, `'legendClick'`, `'resize'`
+```tsx
+import { useRef } from 'react';
+import { CyberGaugeChart, CyberLineChart } from 'cybercore-charts/react';
+import type { CyberLineChartRef } from 'cybercore-charts/react';
 
-## React Components
+const points = [
+  { x: 'Mon', y: 12 },
+  { x: 'Tue', y: 30 },
+];
 
-```jsx
-import {
-  CyberLineChart,
-  CyberBarChart,
-  CyberGaugeChart,
-  CyberDonutChart,
-  CyberSparkline,
-} from 'cybercore-charts/react';
-
-function Dashboard() {
-  const chartRef = useRef();
-  const [data, setData] = useState([{ x: 'Jan', y: 10 }, { x: 'Feb', y: 25 }]);
+export function Dashboard() {
+  const line = useRef<CyberLineChartRef>(null);
 
   return (
-    <CyberLineChart
-      ref={chartRef}
-      data={data}
-      width={600}
-      height={400}
-      theme="cyan"
-      showArea={true}
-      glow={true}
-      animate={true}
-      onPointClick={(event) => console.log('Clicked:', event.data)}
-      onPointHover={(event) => console.log('Hover:', event.data)}
-    />
+    <>
+      <CyberLineChart
+        ref={line}
+        data={points}
+        ariaLabel="Requests per day"
+        showArea
+        responsive
+        style={{ height: 280 }}
+        onPointClick={(event) => console.log(event.data)}
+      />
+      <CyberGaugeChart value={72} label="CPU load" ariaLabel="CPU load" />
+      <button type="button" onClick={() => console.log(line.current?.toSVG())}>
+        Export SVG
+      </button>
+    </>
   );
 }
-
-// Access chart instance via ref
-chartRef.current.update(newData);
-chartRef.current.toSVG();
-chartRef.current.getChart();  // Get underlying chart instance
 ```
 
-## Ember.js Components
+- Components: `CyberLineChart`, `CyberBarChart`, `CyberDonutChart`, `CyberGaugeChart`, `CyberSparkline`. Every option of the matching chart is a prop; any other prop (a class name, a style, an id, data attributes) goes to the container `<div>`.
+- Event props: `onPointHover`, `onPointClick` (line); `onBarHover`, `onBarClick` (bar); `onSegmentHover`, `onSegmentClick` (donut); `onResize`.
+- The ref (`ChartHandle`) has `update`, `setOptions`, `resize`, `getSVG`, `toSVG` and `getChart`.
+- The chart is created after mount, updated in place when props change, destroyed on unmount. Server rendering emits the empty container.
+- Hooks for custom wrappers: `useChart`, `useChartInstance`.
 
-```bash
-npm install cybercore-charts ember-modifier @ember/render-modifiers
+## Ember
+
+```gts
+import { cyberChart } from 'cybercore-charts/ember';
+
+<template>
+  <div {{cyberChart "line" data=@points showArea=true responsive=true ariaLabel="Requests per day"}}></div>
+</template>
 ```
 
-```handlebars
-<CyberLineChart
-  @data={{this.lineData}}
-  @theme="cyan"
-  @showArea={{true}}
-  @animate={{true}}
-/>
+Classic templates: re-export the modifier once as `app/modifiers/cyber-chart.js`, then use it by its dashed name.
 
-<CyberBarChart
-  @data={{this.barData}}
-  @orientation="vertical"
-  @groupMode="grouped"
-/>
-
-<CyberGaugeChart
-  @value={{this.gaugeValue}}
-  @min={{0}}
-  @max={{100}}
-  @theme="green"
-/>
-
-<CyberDonutChart
-  @data={{this.segments}}
-  @innerRadius={{0.6}}
-/>
-
-<CyberSparkline
-  @data={{this.sparkData}}
-  @showEndPoint={{true}}
-/>
+```js
+export { default } from 'cybercore-charts/ember';
 ```
 
-**Modifier for imperative usage:**
-```handlebars
-<div {{cyber-chart LineChart (hash data=this.data theme="cyan")}}></div>
+```hbs
+<div {{cyber-chart "gauge" value=this.load max=100 label="Load" onCreated=this.keepChart}}></div>
 ```
 
-## Theming
+The first argument is the chart type; every named argument is an option of that chart, an event handler (`onPointClick`, `onBarClick`, `onSegmentClick`, `onResize` and the hover ones) or a lifecycle callback (`onCreated`, `onWillDestroy`, each called with the chart instance).
 
-**Available themes:** `'cyan'`, `'magenta'`, `'green'`, `'yellow'`
-
-**Color palette:**
-- Cyan: `#00f0ff` - Primary/tech
-- Magenta: `#ff00aa` - Danger/highlights
-- Yellow: `#f0ff00` - Warnings/accents
-- Green: `#00ff88` - Success/positive
-
-**Using color utilities:**
-```javascript
-import { getThemeColor, hexToRGBA, lighten, darken } from 'cybercore-charts';
-
-getThemeColor('cyan');        // '#00f0ff'
-hexToRGBA('#00f0ff', 0.5);    // 'rgba(0,240,255,0.5)'
-lighten('#00f0ff', 0.2);      // Lighter cyan
-darken('#00f0ff', 0.2);       // Darker cyan
-```
-
-## Tree-shaking
-
-Import individual charts for smaller bundles:
-
-```javascript
-import { LineChart } from 'cybercore-charts';
-import { BarChart } from 'cybercore-charts';
-import { GaugeChart } from 'cybercore-charts';
-import { DonutChart } from 'cybercore-charts';
-import { Sparkline } from 'cybercore-charts';
-```
-
-## CDN Usage
+## Script tag (no build step)
 
 ```html
-<script src="https://unpkg.com/cybercore-charts@latest/dist/cybercore-charts.umd.min.js"></script>
+<div id="chart" style="height: 280px"></div>
+<script src="https://cdn.jsdelivr.net/npm/cybercore-charts@0.2.0/dist/cybercore-charts.umd.min.js"></script>
 <script>
-  const chart = CyberCharts.createChart('line', '#chart', {
-    data: [{ x: 0, y: 10 }, { x: 1, y: 25 }],
-    theme: 'cyan',
-    glow: true,
+  const chart = CyberCharts.createChart('donut', '#chart', {
+    data: [
+      { label: 'Logs', value: 35 },
+      { label: 'Media', value: 65 },
+    ],
+    ariaLabel: 'Storage by kind',
   });
-
-  // Direct class access
-  const line = new CyberCharts.LineChart('#container', options);
-  const bar = new CyberCharts.BarChart('#container', options);
-  const gauge = new CyberCharts.GaugeChart('#container', options);
-  const donut = new CyberCharts.DonutChart('#container', options);
-  const spark = new CyberCharts.Sparkline('#container', options);
-
-  // Color utilities
-  CyberCharts.colors.getThemeColor('cyan');
-  CyberCharts.colors.hexToRGBA('#00f0ff', 0.5);
-
-  // Math utilities
-  CyberCharts.utils.clamp(value, 0, 100);
-  CyberCharts.utils.lerp(a, b, t);
+  console.log(CyberCharts.VERSION, CyberCharts.colors.themeColor('magenta'));
 </script>
 ```
 
-## TypeScript Support
+The global has `createChart`, `LineChart`, `BarChart`, `DonutChart`, `GaugeChart`, `Sparkline`, `colors` (the palette and colour helpers), `utils` (math helpers and `formatNumber`) and `VERSION`.
 
-Full TypeScript definitions included:
+## Theming
 
-```typescript
-import type {
-  LineChartOptions,
-  BarChartOptions,
-  GaugeChartOptions,
-  DonutChartOptions,
-  SparklineOptions,
-  DataPoint,
-  DataSeries,
-  DonutSegment,
-  GaugeThreshold,
-  ChartTheme,
-  ChartEvent,
-  ChartEventHandler,
-} from 'cybercore-charts';
+Colours are CSS custom properties with built-in fallbacks, so a chart follows [cybercore-css](https://github.com/sebyx07/cybercore-css) when that stylesheet is on the page and renders the same neon palette when it is not. Overrides apply live, on `:root` or on any ancestor of the chart:
+
+```css
+.sidebar {
+  --color-accent: #ffb000;
+  --cyber-magenta-500: #ff3d8b;
+  --color-text-secondary: #d0d4dc;
+  --font-mono: 'JetBrains Mono', monospace;
+}
 ```
 
-## SSR / Node.js
+| Token | Used for |
+|---|---|
+| `--color-accent`, `--color-accent-light`, `--color-accent-dark` | the `'accent'` theme |
+| `--cyber-cyan-500`, `--cyber-magenta-500`, `--cyber-green-500`, `--cyber-yellow-500` (and the 300 and 700 steps) | the named themes |
+| `--cyber-violet-500`, `--cyber-amber-500` | later series in the series palette |
+| `--color-text-secondary`, `--color-text-muted` | labels and legend |
+| `--color-border-strong`, `--color-border-default` | axis and grid lines |
+| `--color-bg-primary` | chart surface |
+| `--color-bg-elevated`, `--color-border-accent`, `--color-text-primary` | tooltip |
+| `--focus-ring-color` | keyboard focus ring |
+| `--font-mono` | chart typeface |
 
-Works in Node.js for server-side rendering:
+With cybercore-css, `data-theme="magenta"` on an ancestor retints every `'accent'` chart inside it. Per chart: `theme`, or `color` on a series, a point, a segment or a threshold.
 
-```javascript
-import { LineChart } from 'cybercore-charts';
+Helpers: `themeColor(theme, shade)` and `seriesColor(index)` return the `var(--token, fallback)` strings the charts use; `SERIES_PALETTE` is the series order; `uiColors` holds the non-data colours; `cyberColors` is the fallback palette.
 
-// Note: Requires JSDOM or similar for DOM APIs
-const chart = new LineChart(container, options);
-const svgString = chart.toSVG();  // Pure SVG string for SSR
+The stylesheet is optional polish (hover states, tooltip and legend styling):
+
+```scss
+@use 'cybercore-charts/styles';
 ```
 
 ## Accessibility
 
-- All charts include `aria-label` support
-- Respects `prefers-reduced-motion` for animations
-- Keyboard-navigable data points (when tooltip enabled)
+- The root SVG has a `<title>` (`ariaLabel`) and a `<desc>` (`description`, or a generated summary of the data).
+- A visually hidden table of the data follows the chart (`dataTable`, up to 500 rows).
+- Keyboard (`keyboard`): one tab stop per chart, arrow keys and Home/End move between marks, Enter or Space activates, Escape closes the tooltip. Each mark has a label.
+- Reduced motion: no animation when the system asks for it or an ancestor has `data-motion="reduce"`.
+- Higher contrast: when the system asks for it or an ancestor has `data-contrast="high"`.
+- Series colours are ordered to stay distinguishable with the common forms of colour blindness, and series are always named in the legend, the tooltip and the table.
 
-## Browser Support
+## Server rendering
 
-Chrome 88+, Firefox 85+, Safari 14+, Edge 88+
+Importing any entry point in Node is safe. Charts are created in the browser: in React the components handle it; elsewhere create the chart in your framework's mount hook. `chart.toSVG()` returns markup you can save or inline once the chart exists.
+
+## TypeScript
+
+```ts
+import type {
+  BarChartOptions,
+  BaseChartOptions,
+  ChartEvent,
+  ChartEventHandler,
+  ChartEventType,
+  ChartInstance,
+  ChartTheme,
+  DataPoint,
+  DataSeries,
+  DonutChartOptions,
+  DonutSegment,
+  GaugeChartOptions,
+  GaugeThreshold,
+  LineChartOptions,
+  SparklineOptions,
+} from 'cybercore-charts';
+```
+
+Custom charts extend the exported `BaseChart`; the extension points are described in `src/CLAUDE.md` in the repository.
+
+## Browser support
+
+Current Chrome, Edge, Firefox and Safari. The ES module and CommonJS builds target ES2022, the UMD bundle ES2020; `responsive` needs `ResizeObserver`. Node 18 or later for importing on a server.

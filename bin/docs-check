@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Docs truth check: what README.md and llms.txt say about the API is true of the sources. A doc
+# that names an option the charts do not have sends people (and the AI tools reading llms.txt)
+# to code that throws or silently does nothing.
+#
+#   bin/docs-check            check README.md and llms.txt
+#   bin/docs-check <file>…    check only these files
+#
+# Every js/ts/jsx/tsx code block (and <script> in an html block) is type-checked against src/:
+# imports must be exported, options and props must be in their type in src/types.ts, values must
+# be in their union, methods must exist, argument lists must match. Also checked: package
+# subpaths against package.json "exports", dist file names, Ember `@args`, CSS custom properties,
+# and identifiers named in prose (`showArea`, `chart.update()`, options tables).
+# So a snippet must be real code: write `data: sales`, never `data: [...]` or `// ...` as a value.
+#
+# Exit: 0 every name exists · 1 a doc names something that does not exist · 75 environment
+# missing (Node, node_modules: nothing was checked).
+set -uo pipefail
+# shellcheck source-path=SCRIPTDIR source=_dx.sh
+source "$(dirname "${BASH_SOURCE[0]}")/_dx.sh"
+cd "$ROOT" || exit 1
+
+case "${1:-}" in
+  -h | --help) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+esac
+
+use_node require
+require_deps
+
+if [ "$#" -gt 0 ]; then
+  files=("$@")
+else
+  files=(README.md llms.txt)
+fi
+for file in "${files[@]}"; do
+  [ -f "$file" ] || { echo "bin/docs-check: no such file: $file" >&2; exit 2; }
+done
+
+if node bin/_docs-check.mjs "${files[@]}"; then
+  printf 'bin/docs-check: ok\n'
+else
+  printf '\nbin/docs-check: FAILED. Fix the doc, or add the option to src/types.ts (with its test).\n'
+  exit 1
+fi

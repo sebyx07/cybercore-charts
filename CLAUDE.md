@@ -1,350 +1,122 @@
-# CLAUDE.md
+# cybercore-charts
 
-This file provides guidance to Claude Code (claude.ai/code) when working with
-code in this repository.
+Zero-dependency SVG chart library with a cyberpunk look: line/area, bar, donut/pie, gauge, sparkline. TypeScript; React and Ember adapters; npm `cybercore-charts`, served by jsDelivr and unpkg (`CyberCharts` UMD global), demo at https://sebyx07.github.io/cybercore-charts/. Public repo, default branch `main`, maintained by the developerz.ai agent (`.dz/`). Companion: cybercore-css, whose tokens the charts read.
 
-## Project Overview
+## Response rules
 
-CYBERCORE CHARTS is a zero-dependency SVG chart library with cyberpunk
-aesthetics. Pure TypeScript with no runtime dependencies - generates standalone
-SVG elements that can be embedded anywhere.
+- Execute. No preamble. Lead with the action or the answer; disagree once, with the reason, when the request is wrong.
+- Read the code before claiming anything about it. Report what you verified, never what you assume.
+- Terse. Commands, paths, option and token names stay exact.
+
+## Coding rules
+
+- Smallest change that solves the problem correctly. No abstraction before its second caller, no dead code, no shims.
+- Mirror the nearest existing chart before writing a new pattern.
+- A new option, export or chart gets a test of what it does. A bug fix starts with the failing test.
+- Red gate → fix the cause. Never an `eslint-disable`, `@ts-expect-error`, `any`, skipped test, raised size budget or removed guard to get to green.
+- Outside contributors are welcome here: finish their pull request rather than redo it, keep their authorship, thank them by handle.
+
+## Invariants (the product's promises)
+
+1. **Zero runtime dependencies.** `dependencies` stays empty; React, Ember and `ember-modifier` are optional peers used only by `src/react/` and `src/ember/`. Scale, path, colour and formatting code lives in `src/utils/`. Guard: `bin/repo-guards`.
+2. **SSR-safe.** Importing any entry touches no `window`, `document`, `matchMedia` or `ResizeObserver` (module scope, static initialisers, default parameters included) and has no side effect. Creating a chart without a DOM throws a readable "requires a DOM" error. Guard: `tests/ssr.test.ts`.
+3. **Unique SVG ids per instance.** Every id in a chart's SVG comes from `this.ref(name)`, every reference from `this.url(name)`. A literal id makes two charts on a page share a gradient, filter or clip path.
+4. **Accessible by default.** `<title>` and `<desc>` on the root (generated when not given), a hidden data table, one keyboard tab stop per chart with arrow-key navigation, no colour-only meaning, a series palette that survives colour blindness, no motion under `prefers-reduced-motion: reduce` or `[data-motion="reduce"]`, higher contrast under `prefers-contrast: more` or `[data-contrast="high"]`. Guard: `tests/a11y.test.ts`.
+5. **Tokens from cybercore-css, with fallbacks.** Every colour and the font are `var(--token, fallback)` from `src/utils/theme.ts`: charts follow a cybercore-css theme live (scoped `[data-theme]` included) and render the same neon palette without it. The stylesheet (`src/styles/`) is optional. Guard: `tests/theme.test.ts`.
+6. **Public API stability.** Exports of every entry, options and events in `src/types.ts`, public and protected class members (`BaseChart` is exported for subclassing), the `CyberCharts` global, `package.json` `exports`, `cyber-chart*` classes and custom properties: add, never rename, remove, narrow or make required; a default that redraws existing charts is a change too. Guard: `bin/api-diff`.
+7. **Output is SVG, and data is text.** No canvas. Labels and tooltips from data are set as text, never parsed as HTML; colours from data pass `safeColor`.
+8. **Size budget.** Gzipped ESM and UMD bundles stay under the budgets in `scripts/check-size.ts`.
+
+Breaking 6, or raising the browser, Node or peer floor, is the owner's decision: stop and ask.
+
+## The loop
+
+| Tier | Command | Runs | When |
+|---|---|---|---|
+| tightest | `bin/check files <paths>` | eslint and prettier on those files, vitest on the tests that import them | after each edit; the only tier allowed when agents share the checkout |
+| fast | `bin/check fast` | repo guards, lint, typecheck, unit tests | after a slice works |
+| full | `bin/check` | repo guards, lint, format, typecheck, tests, build, size budget, package check (pack, install, import every entry), demo build, docs truth check. What CI's `check` job runs | once, before the PR |
+
+Exit 0 green · **75 environment missing, nothing was graded** (run `bin/setup`, never "fix" the code) · anything else a check failed, and the last lines name the failing command and how to rerun it. Never trust a piped exit code (`bin/check | tail` reports `tail`). CI adds three jobs `bin/check` does not run: workflow lint, `npm audit`, visual regression (Docker).
 
 ## Commands
 
 ```bash
-# Development
-npm run dev              # Watch library + demo site concurrently
-npm run dev:lib          # Watch TypeScript compilation only
-npm run dev:demo         # Start Vite dev server for demo
-
-# Build
-npm run build            # Build everything (library + demo)
-npm run build:lib        # Build library (ESM + CJS + types)
-
-# Linting
-npm run lint             # Run all linters
-npm run lint:fix         # Auto-fix lint issues
-npm run format           # Prettier format all files
-
-# Testing
-npm run test             # Run Vitest unit tests
-npm run test:watch       # Watch mode
-npm run test:visual      # Playwright visual regression tests
-npm run test:visual:update  # Update visual snapshots
-
-# Type checking
-npm run typecheck        # TypeScript check
+bin/setup                      # Node from .nvmrc (mise or nvm) + npm ci. Idempotent
+bin/dev                        # demo site with hot reload, http://127.0.0.1:5173/cybercore-charts/
+PORT=5199 bin/dev --detach     # background server for browser tools; bin/stop ends it
+bin/check [fast|files <paths>] # the gate; --help lists each tier's steps
+bin/api-diff [version]         # public API removed/changed/added vs the published package
+bin/docs-check                 # README and llms.txt: snippets type-check against src/, named options exist
+bin/repo-guards                # CI parity, agent-surface scan, CLAUDE.md size, package invariants
+npm run build                  # dist/: ESM, CJS, .d.ts, UMD and UMD min
+npx vitest run tests/charts.test.ts   # one file (-t "<name>" for one test)
+npm run lint:fix && npm run format    # autofix
+npm run build:demo && npm run test:visual   # screenshots vs baselines (Docker)
 ```
 
-## Architecture
+No `.env`, no services, no secrets: nothing to configure.
 
-### Library (`src/`)
+## Layout
 
-Zero-dependency SVG chart generation. All charts output pure SVG strings or
-SVGElement objects that can be inserted into any DOM context.
-
-**Structure:**
-
-- `charts/` - Chart type implementations (extend BaseChart)
-- `utils/` - Shared utilities (scales, axes, colors, animations)
-- `styles/` - Default cyberpunk theme definitions
-- `types.ts` - TypeScript type definitions
-- `index.ts` - Main entry point with all exports
-
-### SOLID Architecture
-
-The library follows SOLID principles for maintainability:
-
-#### Single Responsibility Principle (SRP)
-
-Each class/module has one responsibility:
-
-- **`BaseChart`** - Common chart lifecycle (container, SVG, events, destroy)
-- **`ChartEventEmitter`** - Event registration and emission only
-- **`TooltipManager`** - Tooltip creation, positioning, display
-- **`ResponsiveManager`** - ResizeObserver setup and cleanup
-- **Chart classes** - Chart-specific rendering logic only
-
-#### Open/Closed Principle (OCP)
-
-- Charts extend `BaseChart` without modifying it
-- New chart types can be added by extending `BaseChart`
-- Utilities are composable and reusable
-
-#### Dependency Inversion (DIP)
-
-- Charts depend on abstract `BaseChart`, not concrete implementations
-- Managers are injected as dependencies, not hardcoded
-
-### Chart Types (`src/charts/`)
-
-All charts extend `BaseChart<TOptions, TData>`:
-
-```typescript
-// Base class provides shared functionality
-abstract class BaseChart<TOptions, TData> {
-  // Container resolution, dimension validation
-  // Event handling (on/off/emit)
-  // SVG management (getSVG/toSVG)
-  // Animation checks (prefers-reduced-motion)
-  // Responsive setup, tooltip basics, destroy cleanup
-}
+```
+src/types.ts            every option, data and event type: the public contract
+src/index.ts            ESM/CJS entry (charts, createChart, helpers, VERSION)
+src/cdn.ts              UMD entry: the CyberCharts global
+src/charts/             BaseChart + LineChart, BarChart, DonutChart, GaugeChart, Sparkline
+src/utils/              math, svg, theme (token map), colors, a11y, format, tooltip/resize/event managers
+src/adapters/           chart-binding: the lifecycle both framework adapters drive
+src/react/              Cyber* components and hooks → cybercore-charts/react
+src/ember/              the cyberChart modifier → cybercore-charts/ember
+src/styles/             optional stylesheet, shipped as SCSS → cybercore-charts/styles
+dist/                   build output, NOT committed, built at release
+tests/                  vitest: charts, behaviour, a11y, theme, ssr, utils, adapters, react, ember
+tests/visual/           Playwright screenshots of the demo
+demo/                   documentation site and playgrounds (React + Vite), GitHub Pages; not in the package
+scripts/                build-types, check-size, check-package, visual.sh, changelog-notes.sh
+bin/                    setup, dev, stop, check, repo-guards, api-diff, docs-check
+.github/                ci.yml, release.yml, deploy.yml, dependabot, issue and PR forms
+.dz/                    developerz.ai maintainer policy, reviewer prompt, scheduled briefs
+llms.txt                API reference for AI tools that use the library
 ```
 
-**Implementations:**
+## Release
 
-- `BaseChart.ts` - Abstract base class with shared functionality
-- `LineChart.ts` - Line/area charts with glow effects
-- `BarChart.ts` - Bar charts (vertical/horizontal, grouped/stacked)
-- `DonutChart.ts` - Pie/donut charts with neon segments
-- `GaugeChart.ts` - Gauge/meter displays with thresholds
-- `Sparkline.ts` - Inline mini charts
+Merging a `package.json` version bump to `main` is the release: `release.yml` proves the commit, publishes to npm (trusted publishing), then tags and creates the GitHub release from `CHANGELOG.md`. The weekly `release-due` checkup opens that pull request; procedure: `RELEASE.md`. The demo deploys on every merge.
 
-### Utilities (`src/utils/`)
+## Preventive rules (these bite before any symptom appears)
 
-**Core utilities:**
+- **One chart in a test hides id collisions.** Render two instances and assert their ids differ whenever you add a gradient, filter, clip path or mask.
+- **`role="img"` hides focusable children.** `updateAccessibility()` switches the root to `role="group"` when marks are focusable; do not set the role yourself.
+- **Marks are registered, not wired.** Interaction is delegated on the root: call `addItem()` per mark instead of adding listeners, or keyboard users and `destroy()` both miss it.
+- **A literal colour ignores the theme.** Use `themeColor`, `seriesColor`, `uiColors`; a new role gets a token with a fallback there, never a hex in a chart.
+- **Edge data reaches the path string.** Empty, one point, equal values, zero total, `NaN`, `null`, `Infinity`: test the shape when you touch math, and assert the markup has no `NaN`.
+- **Entry animation is requested, not assumed.** `requestEntryAnimation()` in `update()`, `takeEntryAnimation()` in `render()`, frames through `nextFrame()`; a raw `requestAnimationFrame` outlives `destroy()`.
+- **Adapters hold no chart logic.** A new option reaches React through the wrapper's typed key list (a missing key fails the type check) and Ember through the modifier's options map.
+- **A new chart is five registrations**: `src/index.ts` export, `createChart` and its three type maps, `src/cdn.ts`, the Ember modifier's maps, a React wrapper.
+- **Versions move together.** `package.json`, `VERSION` in `src/index.ts`, and every `cybercore-charts@x.y.z` in `README.md` and `llms.txt` (guard: `bin/repo-guards`). The demo's CDN snippet and SRI hash come from `demo/src/data/cdn.json`, rewritten by `node demo/scripts/sync-cdn.mjs` after a release is on npm.
+- **The tarball is checked, not trusted.** 0.1.0 to 0.2.0 were published without their ESM, CJS and type files. `npm run check:package` installs the packed tarball and imports every entry; never remove it from the gate.
+- **Docs are part of the change.** An option, export or usage change updates `llms.txt`, `README.md` when a newcomer needs it, the demo, and `CHANGELOG.md` `## [Unreleased]`, in the same pull request. Snippets in both docs are type-checked by `bin/docs-check`: write real code, no `[...]` placeholders.
+- **Agent-read files are code.** `CLAUDE.md`, `.claude/`, `.dz/`, `.mcp.json`, `llms.txt`: no HTML comments, no invisible characters; this file stays under 12,000 characters (`bin/repo-guards`).
 
-- `math.ts` - Scales, interpolation, path generation
-- `svg.ts` - SVG element creation, filters, gradients
-- `colors.ts` - Cyberpunk palette, color manipulation
+## Never
 
-**SRP Manager classes:**
+- **No git worktrees.** No `git worktree add`, no `isolation: worktree`. One checkout; parallel agents get disjoint file sets, run only `bin/check files <their paths>`, and do no git at all. The coordinator owns git.
+- **Stage by path.** `git add <paths>`, never `-A` or `.`. Never `git stash`, never force-push `main`.
+- **Never publish or tag by hand.** No `npm publish`, `npm version` with a tag, `git tag`, `gh release create`. Release = merge the version bump. A published version is never republished.
+- **Never commit `dist/`**, a secret, or an npm token (publishing is OIDC).
+- **No runtime dependency, no required peer, no canvas, no network request** from the library.
+- **No removed, renamed or retyped export, option, event or class member**, changed default or raised floor without the owner.
+- **No weakened gate**: see Coding rules.
 
-- `EventEmitter.ts` - `ChartEventEmitter` for event handling
-- `TooltipManager.ts` - Tooltip lifecycle and positioning
-- `ResponsiveManager.ts` - ResizeObserver with fallback
+## PR conventions
 
-### Styles (`src/styles/`)
+Branch `<type>/<slug>` off `main`. Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`). One concern per PR; a `.github/` change never shares a PR with code; outside contributors' changes to `.github/`, `bin/`, `.dz/`, `.claude/` are owner-only. Visible change → before/after screenshots at 1440 and 390. User-visible change → a `CHANGELOG.md` `## [Unreleased]` line (credit contributors by handle). Required check: `CI OK` (verify the ruleset: `gh api repos/sebyx07/cybercore-charts/rulesets`). Skills: `verify-change`, `add-chart`. Command: `/release`. Agent: `visual-a11y-reviewer`.
 
-- `cyber-charts.scss` - Cyberpunk theme with CSS variables
-- Includes `prefers-reduced-motion` media query support
+## Where to look (load on demand)
 
-### Demo Site (`demo/`)
-
-React + Vite + TypeScript demo showcasing all chart types. Uses HashRouter for
-GitHub Pages compatibility.
-
-### Tests (`tests/`)
-
-- `charts/*.test.ts` - Unit tests for each chart type
-- `utils/*.test.ts` - Utility function tests
-- `visual/` - Playwright visual regression tests
-
-## Chart Options
-
-All charts share a common base configuration:
-
-```typescript
-interface ChartOptions {
-  width: number;
-  height: number;
-  theme?: 'cyber' | 'neon' | 'matrix' | 'custom';
-  animate?: boolean;
-  responsive?: boolean;
-  padding?: { top: number; right: number; bottom: number; left: number };
-}
-```
-
-### Line Chart
-
-```typescript
-interface LineChartOptions extends ChartOptions {
-  data: { x: number; y: number }[];
-  color?: string;
-  strokeWidth?: number;
-  glow?: boolean;
-  showPoints?: boolean;
-  showArea?: boolean;
-  curve?: 'linear' | 'smooth' | 'step';
-}
-```
-
-### Bar Chart
-
-```typescript
-interface BarChartOptions extends ChartOptions {
-  data: { label: string; value: number }[];
-  orientation?: 'vertical' | 'horizontal';
-  barWidth?: number;
-  gap?: number;
-  colors?: string[];
-  showValues?: boolean;
-}
-```
-
-### Pie Chart
-
-```typescript
-interface PieChartOptions extends ChartOptions {
-  data: { label: string; value: number }[];
-  donut?: boolean;
-  innerRadius?: number;
-  colors?: string[];
-  showLabels?: boolean;
-  showLegend?: boolean;
-}
-```
-
-## API Usage
-
-### Basic Usage
-
-```typescript
-import { LineChart, BarChart, PieChart } from 'cybercore-charts';
-
-// Create a line chart
-const lineChart = new LineChart({
-  width: 600,
-  height: 400,
-  data: [
-    { x: 0, y: 10 },
-    { x: 1, y: 25 },
-    { x: 2, y: 15 },
-  ],
-  glow: true,
-});
-
-// Get SVG string
-const svgString = lineChart.render();
-
-// Or get SVGElement
-const svgElement = lineChart.toElement();
-document.getElementById('chart').appendChild(svgElement);
-```
-
-### Theming
-
-```typescript
-import { createTheme, LineChart } from 'cybercore-charts';
-
-const customTheme = createTheme({
-  colors: {
-    primary: '#00f0ff',
-    secondary: '#ff00aa',
-    background: '#0a0a0f',
-    grid: '#1a1a2f',
-    text: '#ffffff',
-  },
-  effects: {
-    glow: true,
-    scanlines: false,
-  },
-});
-
-const chart = new LineChart({
-  theme: customTheme,
-  // ...
-});
-```
-
-### Tree-Shakeable Imports
-
-```typescript
-// Import only what you need
-import { LineChart } from 'cybercore-charts/charts/line';
-import { BarChart } from 'cybercore-charts/charts/bar';
-```
-
-## Color System
-
-Matches CYBERCORE CSS palette:
-
-- `cyber-cyan` - `#00f0ff` - Primary/data
-- `cyber-magenta` - `#ff00aa` - Secondary/highlights
-- `cyber-yellow` - `#f0ff00` - Warnings/accents
-- `cyber-green` - `#00ff88` - Success/positive
-- `cyber-void` - `#0a0a0f` - Backgrounds
-- `cyber-chrome` - `#8a8a9a` - Grid/axes
-
-## Linting Rules
-
-**TypeScript (ESLint):**
-
-- Strict TypeScript with type checking
-- Consistent type imports (`import type`)
-- Import order: builtins -> external -> internal -> parent -> sibling -> type
-- No unused variables or imports
-- Explicit return types on public functions
-
-## Releases
-
-Releases are automated via GitHub Actions. To create a new release:
-
-```bash
-# 1. Bump version (patch/minor/major)
-npm version patch --no-git-tag-version
-
-# 2. Build the project
-npm run build
-
-# 3. Commit the release
-git add -A
-git commit -m "chore: release vX.X.X"
-git push
-
-# 4. Create and push tag to trigger GitHub Actions
-git tag vX.X.X
-git push origin vX.X.X
-```
-
-GitHub Actions will automatically publish to npm when a new tag is pushed.
-
-## Extending BaseChart
-
-To create a new chart type, extend `BaseChart`:
-
-```typescript
-import { BaseChart } from 'cybercore-charts';
-import type { BaseChartOptions } from 'cybercore-charts';
-
-interface MyChartOptions extends BaseChartOptions {
-  data: MyDataType[];
-  // chart-specific options
-}
-
-export class MyChart extends BaseChart<MyChartOptions, MyDataType[]> {
-  constructor(container: HTMLElement | string, options: MyChartOptions) {
-    // Validate and merge options
-    const mergedOptions = { ...defaults, ...options };
-    super(mergedOptions, { width: 400, height: 300 });
-
-    // Resolve container using inherited method
-    this.container = this.resolveContainer(container);
-
-    this.init();
-  }
-
-  // Required: implement abstract methods
-  render(): void {
-    /* render SVG */
-  }
-  update(data: MyDataType[]): void {
-    /* update with new data */
-  }
-  resize(width?: number, height?: number): void {
-    /* handle resize */
-  }
-  protected createDefinitions(): void {
-    /* create SVG defs */
-  }
-}
-```
-
-**Inherited from BaseChart:**
-
-- `resolveContainer()` - Handle string selectors or HTMLElement
-- `validateDimensions()` - Validate width/height with defaults
-- `shouldAnimate()` - Check animate option + prefers-reduced-motion
-- `on()/off()` - Event registration
-- `getSVG()/toSVG()` - SVG access and export
-- `destroy()` - Cleanup (call `super.destroy()` after your cleanup)
-
-## Key Constraints
-
-- Zero runtime dependencies - pure TypeScript/SVG
-- All output is valid SVG (string or element)
-- Must work in Node.js (SSR) and browser environments
-- Support `prefers-reduced-motion` for animations
-- Demo uses HashRouter (`/#/path`) for GitHub Pages
-- Node 20+ required
-- Bundle size target: <10KB minified + gzipped
+- Rendering rules (ids, SSR, accessibility, tokens, motion, data edge cases), extending `BaseChart` → `src/CLAUDE.md`
+- Demo site: routes, playgrounds, snippet rules → `demo/CLAUDE.md`
+- Workflows, pinning, release lane → `.github/CLAUDE.md`, `RELEASE.md`
+- Maintainer policy, review rules, scheduled checkups → `.dz/README.md`
+- What users are told: `README.md`, `llms.txt`, `CONTRIBUTING.md`

@@ -1,119 +1,51 @@
+// Visual regression of the demo site (built from the library sources).
+//
+// Baselines are rendered in the official Playwright image so CI and every machine get the same
+// pixels: always run through scripts/visual.sh, never a bare `playwright test` on the host.
+//
+//   npm run build:demo && npm run test:visual            compare against the baselines
+//   npm run build:demo && npm run test:visual:update     accept the new rendering
 import { defineConfig, devices } from '@playwright/test';
 
-/**
- * Cybercore Charts - Playwright Configuration
- * Used for visual regression testing of chart components
- */
+const PORT = 4329;
+
 export default defineConfig({
-  // Directory containing visual test specs
   testDir: './tests/visual',
-
-  // Run tests in parallel for faster execution
+  snapshotPathTemplate: '{testDir}/__snapshots__/{testFilePath}/{arg}{ext}',
   fullyParallel: true,
-
-  // Fail the build on CI if you accidentally left test.only in the source code
-  forbidOnly: !!process.env.CI,
-
-  // Retry failed tests on CI
-  retries: process.env.CI ? 2 : 0,
-
-  // Limit workers on CI for consistent results
-  workers: process.env.CI ? 1 : undefined,
-
-  // Reporter configuration
-  reporter: process.env.CI
-    ? [['github'], ['html', { open: 'never' }]]
-    : [['html', { open: 'on-failure' }]],
-
-  // Shared settings for all projects
+  forbidOnly: !!process.env['CI'],
+  retries: 0,
+  reporter: process.env['CI'] ? [['github'], ['html', { open: 'never' }]] : 'list',
+  updateSnapshots: 'none',
   use: {
-    // Base URL for the demo site
-    baseURL: 'http://localhost:4173',
-
-    // Capture trace on first retry
-    trace: 'on-first-retry',
-
-    // Take screenshot on failure
-    screenshot: 'only-on-failure',
-
-    // Video recording off by default (enable for debugging)
-    video: 'off',
+    baseURL: `http://localhost:${PORT}/cybercore-charts/`,
+    viewport: { width: 1280, height: 800 },
+    deviceScaleFactor: 1,
+    colorScheme: 'dark',
+    // The charts honour prefers-reduced-motion: no entry animations mid-screenshot.
+    reducedMotion: 'reduce',
+    trace: 'retain-on-failure',
   },
-
-  // Browser configurations
   projects: [
     {
       name: 'chromium',
-      use: {
-        ...devices['Desktop Chrome'],
-        // Set viewport for consistent screenshots
-        viewport: { width: 1280, height: 720 },
-      },
-    },
-    {
-      name: 'firefox',
-      use: {
-        ...devices['Desktop Firefox'],
-        viewport: { width: 1280, height: 720 },
-      },
-    },
-    {
-      name: 'webkit',
-      use: {
-        ...devices['Desktop Safari'],
-        viewport: { width: 1280, height: 720 },
-      },
-    },
-    // Mobile viewports for responsive testing
-    {
-      name: 'mobile-chrome',
-      use: {
-        ...devices['Pixel 5'],
-      },
-    },
-    {
-      name: 'mobile-safari',
-      use: {
-        ...devices['iPhone 12'],
-      },
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } },
     },
   ],
-
-  // Local dev server configuration
   webServer: {
-    // Start the demo preview server
-    command: 'npm run preview',
-    url: 'http://localhost:4173',
-    // Reuse existing server in development
-    reuseExistingServer: !process.env.CI,
-    // Wait for server to be ready
-    timeout: 120000,
+    command: `npx vite preview --config demo/vite.config.ts --port ${PORT} --strictPort`,
+    url: `http://localhost:${PORT}/cybercore-charts/`,
+    reuseExistingServer: false,
+    timeout: 60_000,
   },
-
-  // Snapshot directory for visual regression tests
-  snapshotDir: './tests/visual/__snapshots__',
-
-  // Snapshot comparison settings
+  timeout: 60_000,
   expect: {
-    // Global expectation timeout
-    timeout: 10000,
+    timeout: 30_000,
     toHaveScreenshot: {
-      // Allow slight pixel differences (anti-aliasing, etc.)
-      maxDiffPixels: 100,
-      // Threshold for pixel color comparison (0-1)
-      threshold: 0.2,
-      // Animation must be disabled before screenshot
       animations: 'disabled',
-    },
-    toMatchSnapshot: {
-      // Threshold for image comparison
-      threshold: 0.2,
+      caret: 'hide',
+      scale: 'css',
+      maxDiffPixelRatio: 0.001,
     },
   },
-
-  // Global timeout settings
-  timeout: 30000,
-
-  // Output directory for test artifacts
-  outputDir: './test-results/',
 });
