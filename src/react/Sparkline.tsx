@@ -1,47 +1,50 @@
 /**
  * CyberCore Charts - React Sparkline Component
- * React wrapper for the Sparkline class
  */
 
-import React, { forwardRef, useRef, useEffect, useImperativeHandle, useMemo } from 'react';
+import { forwardRef } from 'react';
 
 import { Sparkline } from '../charts/Sparkline';
 
-import type { SparklineOptions, ChartTheme } from '../types';
+import { splitProps, useChartBinding, useChartHandle } from './useChart';
+
+import type { ChartHandle } from './useChart';
+import type { SparklineOptions } from '../types';
+import type { HTMLAttributes } from 'react';
+
+const OPTION_KEYS: Record<keyof SparklineOptions, true> = {
+  data: true,
+  width: true,
+  height: true,
+  theme: true,
+  color: true,
+  lineWidth: true,
+  showArea: true,
+  areaOpacity: true,
+  showEndPoint: true,
+  showMinMax: true,
+  glow: true,
+  interpolation: true,
+  animate: true,
+  animationDuration: true,
+  ariaLabel: true,
+  description: true,
+  locale: true,
+};
+
+const EXTRAS = (chart: () => Sparkline) => ({
+  getData: () => chart().getData(),
+  getStats: () => chart().getStats(),
+});
 
 /**
- * Props for CyberSparkline component
+ * Props for CyberSparkline: every sparkline option and any attribute of the
+ * container `<span>`.
  */
-export interface CyberSparklineProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'data'> {
-  /** Data values */
-  data: number[];
-  /** Sparkline width */
-  width?: number;
-  /** Sparkline height */
-  height?: number;
-  /** Color theme */
-  theme?: ChartTheme;
-  /** Custom color */
-  color?: string;
-  /** Line width */
-  lineWidth?: number;
-  /** Show area fill */
-  showArea?: boolean;
-  /** Area opacity */
-  areaOpacity?: number;
-  /** Show end point */
-  showEndPoint?: boolean;
-  /** Show min/max points */
-  showMinMax?: boolean;
-  /** Enable glow effect */
-  glow?: boolean;
-  /** Interpolation method */
-  interpolation?: 'linear' | 'smooth';
-  /** Animate on load */
-  animate?: boolean;
-  /** Animation duration */
-  animationDuration?: number;
-}
+export interface CyberSparklineProps
+  extends
+    SparklineOptions,
+    Omit<HTMLAttributes<HTMLSpanElement>, keyof SparklineOptions | 'children'> {}
 
 /**
  * Sparkline statistics
@@ -57,165 +60,41 @@ export interface SparklineStats {
 /**
  * Ref handle for CyberSparkline
  */
-export interface CyberSparklineRef {
-  /** Update sparkline with new data */
-  update: (data: number[]) => void;
-  /** Update sparkline options */
-  setOptions: (options: Partial<SparklineOptions>) => void;
-  /** Resize sparkline */
-  resize: (width?: number, height?: number) => void;
-  /** Get SVG element */
-  getSVG: () => SVGSVGElement;
-  /** Export as SVG string */
-  toSVG: () => string;
-  /** Get current data */
+export type CyberSparklineRef = ChartHandle<Sparkline, SparklineOptions, number[]> & {
+  /** The values currently drawn */
   getData: () => number[];
-  /** Get data statistics */
+  /** Minimum, maximum, first, last and trend of the current values */
   getStats: () => SparklineStats;
-  /** Get sparkline instance */
-  getChart: () => Sparkline | null;
-}
+};
 
 /**
- * React wrapper component for CyberCore Sparkline
+ * Inline mini chart. Renders a `<span>`, so it can sit inside a sentence or
+ * a table cell.
+ *
+ * @example
+ * ```tsx
+ * <CyberSparkline data={[4, 8, 15, 16, 23, 42]} showEndPoint aria-label="Requests, last 6 hours" />
+ * ```
  */
-export const CyberSparkline = forwardRef<CyberSparklineRef, CyberSparklineProps>(
-  (
-    {
-      data,
-      width,
-      height,
-      theme,
-      color,
-      lineWidth,
-      showArea,
-      areaOpacity,
-      showEndPoint,
-      showMinMax,
-      glow,
-      interpolation,
-      animate,
-      animationDuration,
-      className,
-      style,
-      ...props
-    },
-    ref
-  ) => {
-    const containerRef = useRef<HTMLDivElement>(null);
-    const chartRef = useRef<Sparkline | null>(null);
+export const CyberSparkline = forwardRef<CyberSparklineRef, CyberSparklineProps>((props, ref) => {
+  const [options, rest] = splitProps<SparklineOptions, CyberSparklineProps>(props, OPTION_KEYS);
+  const { className, style, ...attributes } = rest;
 
-    // Memoize options to prevent unnecessary re-renders
-    const options = useMemo<SparklineOptions>(
-      () => ({
-        data,
-        width,
-        height,
-        theme,
-        color,
-        lineWidth,
-        showArea,
-        areaOpacity,
-        showEndPoint,
-        showMinMax,
-        glow,
-        interpolation,
-        animate,
-        animationDuration,
-      }),
-      [
-        data,
-        width,
-        height,
-        theme,
-        color,
-        lineWidth,
-        showArea,
-        areaOpacity,
-        showEndPoint,
-        showMinMax,
-        glow,
-        interpolation,
-        animate,
-        animationDuration,
-      ]
-    );
+  const { containerRef, getChart } = useChartBinding<SparklineOptions, Sparkline, HTMLSpanElement>(
+    Sparkline,
+    options
+  );
+  useChartHandle(ref, getChart, 'CyberSparkline', EXTRAS);
 
-    // Initialize chart on mount
-    useEffect(() => {
-      if (!containerRef.current) {
-        return;
-      }
-
-      chartRef.current = new Sparkline(containerRef.current, options);
-
-      return () => {
-        if (chartRef.current) {
-          chartRef.current.destroy();
-          chartRef.current = null;
-        }
-      };
-    }, []); // Only run on mount
-
-    // Update chart when options change
-    useEffect(() => {
-      if (chartRef.current) {
-        chartRef.current.setOptions(options);
-      }
-    }, [options]);
-
-    // Expose imperative handle
-    useImperativeHandle(
-      ref,
-      () => ({
-        update: (newData: number[]) => {
-          chartRef.current?.update(newData);
-        },
-        setOptions: (newOptions: Partial<SparklineOptions>) => {
-          chartRef.current?.setOptions(newOptions);
-        },
-        resize: (w?: number, h?: number) => {
-          chartRef.current?.resize(w, h);
-        },
-        getSVG: () => {
-          if (!chartRef.current) {
-            throw new Error('Sparkline not initialized');
-          }
-          return chartRef.current.getSVG();
-        },
-        toSVG: () => {
-          if (!chartRef.current) {
-            throw new Error('Sparkline not initialized');
-          }
-          return chartRef.current.toSVG();
-        },
-        getData: () => {
-          if (!chartRef.current) {
-            throw new Error('Sparkline not initialized');
-          }
-          return chartRef.current.getData();
-        },
-        getStats: () => {
-          if (!chartRef.current) {
-            throw new Error('Sparkline not initialized');
-          }
-          return chartRef.current.getStats();
-        },
-        getChart: () => chartRef.current,
-      }),
-      []
-    );
-
-    return (
-      <div
-        ref={containerRef}
-        className={`cyber-sparkline-container ${className || ''}`}
-        style={{ display: 'inline-block', ...style }}
-        {...props}
-      />
-    );
-  }
-);
+  return (
+    <span
+      ref={containerRef}
+      className={className ? `cyber-sparkline-container ${className}` : 'cyber-sparkline-container'}
+      style={{ display: 'inline-block', ...style }}
+      {...attributes}
+    />
+  );
+});
 
 CyberSparkline.displayName = 'CyberSparkline';
 

@@ -6,7 +6,7 @@
 
 import { LAYOUT } from '../constants';
 
-import { escapeHtml } from './svg';
+import { safeColor, uiColors } from './theme';
 
 // ============================================================================
 // Types
@@ -42,9 +42,9 @@ export class TooltipManager {
     this.container = container;
     this.options = {
       enabled: true,
-      backgroundColor: 'rgba(10, 10, 15, 0.95)',
-      textColor: '#d8d8d8',
-      borderColor: 'rgba(0, 240, 255, 0.3)',
+      backgroundColor: uiColors.tooltipBg,
+      textColor: uiColors.tooltipText,
+      borderColor: uiColors.tooltipBorder,
       padding: '10px 14px',
       borderRadius: '4px',
       fontSize: '13px',
@@ -64,6 +64,8 @@ export class TooltipManager {
     }
 
     this.element = document.createElement('div');
+    this.element.className = 'cyber-chart-tooltip';
+    this.element.setAttribute('role', 'tooltip');
     this.element.style.cssText = `
       position: fixed;
       pointer-events: none;
@@ -72,9 +74,9 @@ export class TooltipManager {
       padding: ${this.options.padding};
       border-radius: ${this.options.borderRadius};
       font-size: ${this.options.fontSize};
-      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-family: ${uiColors.font};
       border: 1px solid ${this.options.borderColor};
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 240, 255, 0.1);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
       z-index: ${this.options.zIndex};
       opacity: 0;
       transition: opacity 0.15s ease;
@@ -85,18 +87,16 @@ export class TooltipManager {
   /**
    * Ensures the tooltip element exists, creating it lazily if needed.
    * This saves DOM nodes for charts that never get hovered.
-   * @returns true if element exists or was created, false if disabled
+   * @returns the element, or null when tooltips are disabled
    */
-  private ensureElement(): boolean {
+  private ensureElement(): HTMLDivElement | null {
     if (!this.options.enabled) {
-      return false;
+      return null;
     }
-
     if (!this.element) {
       this.create();
     }
-
-    return this.element !== null;
+    return this.element;
   }
 
   /**
@@ -109,12 +109,10 @@ export class TooltipManager {
    */
   show(content: HTMLElement | string, x: number, y: number): void {
     // Lazy creation on first show
-    if (!this.ensureElement()) {
+    const element = this.ensureElement();
+    if (!element) {
       return;
     }
-
-    // After ensureElement() returns true, element is guaranteed to exist
-    const element = this.element!;
 
     // Clear existing content
     while (element.firstChild) {
@@ -193,6 +191,17 @@ export class TooltipManager {
   }
 
   /**
+   * Colour swatch for tooltip rows. The colour goes through safeColor so a
+   * series colour cannot inject further CSS.
+   */
+  private static swatch(color: string, borderRadius: string): HTMLSpanElement {
+    const swatch = document.createElement('span');
+    swatch.style.cssText = `display: inline-block; width: 10px; height: 10px; border-radius: ${borderRadius};`;
+    swatch.style.setProperty('background', safeColor(color));
+    return swatch;
+  }
+
+  /**
    * Helper to create tooltip content with color indicator
    * @param color - The color for the indicator dot
    * @param label - The label text
@@ -211,15 +220,7 @@ export class TooltipManager {
     const header = document.createElement('div');
     header.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-bottom: 4px;';
 
-    const colorDot = document.createElement('span');
-    colorDot.style.cssText = `
-      width: 10px;
-      height: 10px;
-      background: ${escapeHtml(color)};
-      border-radius: 50%;
-      box-shadow: 0 0 6px ${escapeHtml(color)};
-    `;
-    header.appendChild(colorDot);
+    header.appendChild(TooltipManager.swatch(color, '50%'));
 
     const labelEl = document.createElement('strong');
     labelEl.textContent = label;
@@ -230,7 +231,6 @@ export class TooltipManager {
     // Value row
     const valueRow = document.createElement('div');
     const valueEl = document.createElement('strong');
-    valueEl.style.color = escapeHtml(color);
     valueEl.textContent = String(value);
     valueRow.appendChild(valueEl);
     container.appendChild(valueRow);
@@ -267,9 +267,10 @@ export class TooltipManager {
     const headerRow = document.createElement('div');
     headerRow.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-bottom: 4px;';
 
-    const colorIndicator = document.createElement('span');
-    const borderRadiusStyle = indicatorShape === 'circle' ? '50%' : '2px';
-    colorIndicator.style.cssText = `width: 10px; height: 10px; background: ${escapeHtml(color)}; border-radius: ${borderRadiusStyle};`;
+    const colorIndicator = TooltipManager.swatch(
+      color,
+      indicatorShape === 'circle' ? '50%' : '2px'
+    );
 
     const seriesNameEl = document.createElement('strong');
     seriesNameEl.textContent = seriesName;
@@ -279,9 +280,8 @@ export class TooltipManager {
 
     // Value row
     const valueRow = document.createElement('div');
-    const labelText = document.createTextNode(`${escapeHtml(xLabel)}: `);
+    const labelText = document.createTextNode(`${xLabel}: `);
     const valueSpan = document.createElement('strong');
-    valueSpan.style.color = escapeHtml(color);
     valueSpan.textContent = String(yValue);
 
     valueRow.appendChild(labelText);
@@ -312,8 +312,7 @@ export class TooltipManager {
     const headerRow = document.createElement('div');
     headerRow.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-bottom: 4px;';
 
-    const colorIndicator = document.createElement('span');
-    colorIndicator.style.cssText = `width: 10px; height: 10px; background: ${escapeHtml(color)}; border-radius: 2px;`;
+    const colorIndicator = TooltipManager.swatch(color, '2px');
 
     const labelName = document.createElement('strong');
     labelName.textContent = label;
@@ -325,7 +324,6 @@ export class TooltipManager {
     const valueRow = document.createElement('div');
     const valueLabel = document.createTextNode('Value: ');
     const valueSpan = document.createElement('strong');
-    valueSpan.style.color = escapeHtml(color);
     valueSpan.textContent = String(value);
     valueRow.appendChild(valueLabel);
     valueRow.appendChild(valueSpan);
@@ -334,7 +332,6 @@ export class TooltipManager {
     const percentRow = document.createElement('div');
     const percentLabel = document.createTextNode('Percentage: ');
     const percentSpan = document.createElement('strong');
-    percentSpan.style.color = escapeHtml(color);
     percentSpan.textContent = percentage;
     percentRow.appendChild(percentLabel);
     percentRow.appendChild(percentSpan);

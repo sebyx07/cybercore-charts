@@ -100,6 +100,16 @@ export const cyberColors: CyberColorPalette = {
 // Theme Color Accessors
 // ============================================================================
 
+type Shades = CyberColorPalette['cyan'];
+
+/**
+ * Static shades for a theme. 'accent' has no fixed hue (it follows
+ * cybercore-css at runtime), so its static fallback is cyan.
+ */
+function paletteFor(theme: ChartTheme): Shades {
+  return theme === 'accent' ? cyberColors.cyan : (cyberColors[theme] ?? cyberColors.cyan);
+}
+
 /**
  * Get the primary color for a theme
  */
@@ -107,7 +117,7 @@ export function getThemeColor(
   theme: ChartTheme,
   shade: keyof typeof cyberColors.cyan = 500
 ): string {
-  return cyberColors[theme][shade];
+  return paletteFor(theme)[shade];
 }
 
 /**
@@ -117,7 +127,7 @@ export function getThemeColorRGB(
   theme: ChartTheme,
   shade: keyof typeof cyberColors.cyan = 500
 ): { r: number; g: number; b: number } {
-  const hex = cyberColors[theme][shade];
+  const hex = paletteFor(theme)[shade];
   return hexToRGB(hex);
 }
 
@@ -125,21 +135,21 @@ export function getThemeColorRGB(
  * Get a lighter variant of the theme color
  */
 export function getThemeColorLight(theme: ChartTheme): string {
-  return cyberColors[theme][300];
+  return paletteFor(theme)[300];
 }
 
 /**
  * Get a darker variant of the theme color
  */
 export function getThemeColorDark(theme: ChartTheme): string {
-  return cyberColors[theme][700];
+  return paletteFor(theme)[700];
 }
 
 /**
  * Get the glow color for a theme (typically the brightest shade)
  */
 export function getGlowColor(theme: ChartTheme): string {
-  return cyberColors[theme][400];
+  return paletteFor(theme)[400];
 }
 
 // ============================================================================
@@ -191,9 +201,9 @@ export function hslToRGB(h: number, s: number, l: number): { r: number; g: numbe
   const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
   const m = l - c / 2;
 
-  let r = 0,
-    g = 0,
-    b = 0;
+  let r: number;
+  let g: number;
+  let b: number;
 
   if (h < 60) {
     r = c;
@@ -324,16 +334,16 @@ export function getContrastColor(hex: string): string {
  * Generate a color palette for multiple series
  */
 export function generateSeriesColors(count: number, startTheme: ChartTheme = 'cyan'): string[] {
-  const startIndex = CHART_THEMES.indexOf(startTheme);
+  const startIndex = Math.max(0, CHART_THEMES.indexOf(startTheme));
   const colors: string[] = [];
 
   for (let i = 0; i < count; i++) {
     const themeIndex = (startIndex + i) % CHART_THEMES.length;
     const theme = CHART_THEMES[themeIndex];
     // Vary the shade slightly for visual distinction
-    const shadeIndex = (5 - Math.floor(i / CHART_THEMES.length)) as keyof typeof cyberColors.cyan;
-    const shade = Math.max(300, Math.min(700, shadeIndex * 100)) as keyof typeof cyberColors.cyan;
-    colors.push(cyberColors[theme][shade] || cyberColors[theme][500]);
+    const shadeIndex = (5 - Math.floor(i / CHART_THEMES.length)) as keyof Shades;
+    const shade = Math.max(300, Math.min(700, shadeIndex * 100)) as keyof Shades;
+    colors.push(paletteFor(theme)[shade] || paletteFor(theme)[500]);
   }
 
   return colors;
@@ -344,8 +354,8 @@ export function generateSeriesColors(count: number, startTheme: ChartTheme = 'cy
  */
 export function getThemeGradient(theme: ChartTheme): { start: string; end: string } {
   return {
-    start: cyberColors[theme][400],
-    end: cyberColors[theme][600],
+    start: paletteFor(theme)[400],
+    end: paletteFor(theme)[600],
   };
 }
 
@@ -374,14 +384,14 @@ export function createGradient(
  * Get glow filter color for SVG
  */
 export function getGlowFilterColor(theme: ChartTheme): string {
-  return cyberColors[theme][400];
+  return paletteFor(theme)[400];
 }
 
 /**
  * Get box shadow for glow effect
  */
 export function getGlowShadow(theme: ChartTheme, intensity: number = 1, blur: number = 10): string {
-  const color = cyberColors[theme][500];
+  const color = paletteFor(theme)[500];
   const alpha = Math.min(1, 0.5 * intensity);
   return `0 0 ${blur}px ${hexToRGBA(color, alpha)}, 0 0 ${blur * 2}px ${hexToRGBA(color, alpha * 0.5)}`;
 }

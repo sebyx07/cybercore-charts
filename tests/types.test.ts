@@ -320,14 +320,14 @@ describe('ChartInstance Interface', () => {
   it('should define required methods', () => {
     // This is a compile-time check - if ChartInstance is missing methods, TypeScript will error
     const mockInstance: ChartInstance = {
-      update: (data) => {},
-      setOptions: (options) => {},
+      update: () => {},
+      setOptions: () => {},
       destroy: () => {},
-      resize: (width, height) => {},
+      resize: () => {},
       getSVG: () => document.createElementNS('http://www.w3.org/2000/svg', 'svg'),
       toSVG: () => '<svg></svg>',
-      on: (event, handler) => {},
-      off: (event, handler) => {},
+      on: () => {},
+      off: () => {},
     };
 
     expect(typeof mockInstance.update).toBe('function');

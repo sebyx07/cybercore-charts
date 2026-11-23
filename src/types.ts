@@ -8,21 +8,17 @@
 // ============================================================================
 
 /**
- * Cyberpunk color theme options
+ * Cyberpunk color theme options.
+ * 'accent' (the default) follows the cybercore-css accent (`--color-accent`,
+ * retinted by `[data-theme]`) and falls back to cyan without it.
  */
-export type ChartTheme = 'cyan' | 'magenta' | 'green' | 'yellow';
+export type ChartTheme = 'accent' | 'cyan' | 'magenta' | 'green' | 'yellow';
 
 /**
  * Animation easing functions
  */
 export type EasingFunction =
-  | 'linear'
-  | 'easeIn'
-  | 'easeOut'
-  | 'easeInOut'
-  | 'easeInCubic'
-  | 'easeOutCubic'
-  | 'easeInOutCubic';
+  'linear' | 'easeIn' | 'easeOut' | 'easeInOut' | 'easeInCubic' | 'easeOutCubic' | 'easeInOutCubic';
 
 /**
  * Chart padding configuration
@@ -174,8 +170,16 @@ export interface BaseChartOptions {
   classPrefix?: string;
   /** Responsive - auto-resize on container resize */
   responsive?: boolean;
-  /** Accessibility label */
+  /** Accessible name, rendered as the SVG <title> */
   ariaLabel?: string;
+  /** Accessible description (SVG <desc>); a data summary is generated when omitted */
+  description?: string;
+  /** Render a visually hidden data table for screen readers (default: true) */
+  dataTable?: boolean;
+  /** Make data marks focusable and navigable with the arrow keys (default: true) */
+  keyboard?: boolean;
+  /** BCP 47 locale for number and date labels (default: the runtime locale) */
+  locale?: string;
 }
 
 // ============================================================================
@@ -404,6 +408,12 @@ export interface SparklineOptions {
   animate?: boolean;
   /** Animation duration */
   animationDuration?: number;
+  /** Accessible name, rendered as the SVG <title> (default: 'Sparkline') */
+  ariaLabel?: string;
+  /** Accessible description; a trend summary is generated when omitted */
+  description?: string;
+  /** BCP 47 locale for numbers in the generated description */
+  locale?: string;
 }
 
 // ============================================================================

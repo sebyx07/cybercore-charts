@@ -97,6 +97,18 @@ export function getXExtent(data: DataPoint[]): [number, number] {
 }
 
 /**
+ * A "nice" tick step (1, 2, 5 or 10 times a power of ten) covering `range`
+ * in about `tickCount` steps.
+ */
+function niceStep(range: number, tickCount: number): number {
+  const roughStep = range / Math.max(1, tickCount);
+  const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+  const normalized = roughStep / magnitude;
+  const multiple = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  return multiple * magnitude;
+}
+
+/**
  * Calculate nice axis bounds (rounds to nice numbers)
  */
 export function niceExtent(min: number, max: number, tickCount: number = 5): [number, number] {
@@ -116,47 +128,25 @@ export function niceExtent(min: number, max: number, tickCount: number = 5): [nu
     return [min - padding, max + padding];
   }
 
-  const range = max - min;
-  const roughStep = range / tickCount;
-
-  // Guard against log10(0) when roughStep is 0 or very small
-  if (roughStep <= 0 || !isFinite(roughStep)) {
-    console.warn('niceExtent: Invalid step calculated, using original bounds');
-    return [min, max];
+  if (min > max) {
+    [min, max] = [max, min];
   }
 
-  const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
-  const normalizedStep = roughStep / magnitude;
-
-  let niceStep: number;
-  if (normalizedStep <= 1) {
-    niceStep = 1;
-  } else if (normalizedStep <= 2) {
-    niceStep = 2;
-  } else if (normalizedStep <= 5) {
-    niceStep = 5;
-  } else {
-    niceStep = 10;
-  }
-
-  niceStep *= magnitude;
-
-  const niceMin = Math.floor(min / niceStep) * niceStep;
-  const niceMax = Math.ceil(max / niceStep) * niceStep;
-
-  return [niceMin, niceMax];
+  const step = niceStep(max - min, tickCount);
+  return [Math.floor(min / step) * step, Math.ceil(max / step) * step];
 }
 
 /**
- * Generate nice tick values
+ * Generate nice tick values spanning the nice extent of [min, max]. Every
+ * tick is a multiple of a 1/2/5 step, so labels stay round.
  */
 export function generateTicks(min: number, max: number, count: number = 5): number[] {
   const [niceMin, niceMax] = niceExtent(min, max, count);
-  const step = (niceMax - niceMin) / count;
+  const step = niceStep(niceMax - niceMin, count);
   const ticks: number[] = [];
 
-  for (let i = 0; i <= count; i++) {
-    ticks.push(round(niceMin + step * i, 10));
+  for (let value = niceMin; value <= niceMax + step / 2; value += step) {
+    ticks.push(round(value, 10));
   }
 
   return ticks;
@@ -249,6 +239,23 @@ export const easings: Record<EasingFunction, (t: number) => number> = {
  */
 export function getEasing(name: EasingFunction): (t: number) => number {
   return easings[name] || easings.linear;
+}
+
+const CSS_EASINGS: Record<EasingFunction, string> = {
+  linear: 'linear',
+  easeIn: 'ease-in',
+  easeOut: 'ease-out',
+  easeInOut: 'ease-in-out',
+  easeInCubic: 'cubic-bezier(0.32, 0, 0.67, 0)',
+  easeOutCubic: 'cubic-bezier(0.33, 1, 0.68, 1)',
+  easeInOutCubic: 'cubic-bezier(0.65, 0, 0.35, 1)',
+};
+
+/**
+ * CSS timing function for an easing name (for CSS transitions)
+ */
+export function cssEasing(name: EasingFunction | undefined): string {
+  return (name && CSS_EASINGS[name]) || 'ease-out';
 }
 
 // ============================================================================
@@ -490,62 +497,62 @@ function perpendicularDistance(point: Point, lineStart: Point, lineEnd: Point): 
 }
 
 /**
- * Reduce data points using Ramer-Douglas-Peucker algorithm
- * for better performance with large datasets.
+ * Indices of the points kept by Ramer-Douglas-Peucker simplification, in
+ * ascending order. Iterative, so long inputs cannot overflow the call stack.
  *
- * This algorithm simplifies a curve by removing points that are within
- * a specified tolerance of the simplified curve, while preserving the
- * overall shape.
+ * @param points - Points to simplify
+ * @param tolerance - Maximum perpendicular distance a dropped point may have
+ *                    from the simplified line (pixels for screen coordinates)
+ */
+export function simplifyIndices(points: Point[], tolerance: number): number[] {
+  const count = points.length;
+  if (count <= 2 || tolerance <= 0) {
+    return points.map((_, i) => i);
+  }
+
+  const keep = new Uint8Array(count);
+  keep[0] = 1;
+  keep[count - 1] = 1;
+  const stack: Array<[number, number]> = [[0, count - 1]];
+
+  for (let range = stack.pop(); range; range = stack.pop()) {
+    const [first, last] = range;
+    let maxDistance = 0;
+    let maxIndex = -1;
+    for (let i = first + 1; i < last; i++) {
+      const dist = perpendicularDistance(points[i], points[first], points[last]);
+      if (dist > maxDistance) {
+        maxDistance = dist;
+        maxIndex = i;
+      }
+    }
+    if (maxIndex !== -1 && maxDistance > tolerance) {
+      keep[maxIndex] = 1;
+      stack.push([first, maxIndex], [maxIndex, last]);
+    }
+  }
+
+  const kept: number[] = [];
+  keep.forEach((flag, i) => {
+    if (flag) {
+      kept.push(i);
+    }
+  });
+  return kept;
+}
+
+/**
+ * Reduce data points using the Ramer-Douglas-Peucker algorithm for better
+ * performance with large datasets, preserving the overall shape.
  *
  * @param points - Array of points to simplify
  * @param tolerance - Maximum allowed perpendicular distance from the simplified line.
  *                    Higher values result in more simplification.
  *                    Recommended: 0.5-2 for pixel coordinates.
  * @returns Simplified array of points
- *
- * @example
- * ```typescript
- * const simplified = simplifyPath(points, 1.0);
- * // Original: 10,000 points -> Simplified: ~500 points (depending on data)
- * ```
  */
 export function simplifyPath(points: Point[], tolerance: number): Point[] {
-  // Handle edge cases
-  if (points.length <= 2) {
-    return [...points];
-  }
-
-  if (tolerance <= 0) {
-    return [...points];
-  }
-
-  // Find the point with the maximum distance from the line between first and last
-  let maxDistance = 0;
-  let maxIndex = 0;
-
-  const firstPoint = points[0];
-  const lastPoint = points[points.length - 1];
-
-  for (let i = 1; i < points.length - 1; i++) {
-    const dist = perpendicularDistance(points[i], firstPoint, lastPoint);
-    if (dist > maxDistance) {
-      maxDistance = dist;
-      maxIndex = i;
-    }
-  }
-
-  // If the maximum distance is greater than the tolerance, recursively simplify
-  if (maxDistance > tolerance) {
-    // Recursively simplify the two sub-arrays
-    const leftPoints = simplifyPath(points.slice(0, maxIndex + 1), tolerance);
-    const rightPoints = simplifyPath(points.slice(maxIndex), tolerance);
-
-    // Concatenate results (remove duplicate point at maxIndex)
-    return [...leftPoints.slice(0, -1), ...rightPoints];
-  }
-
-  // All points are within tolerance, return just the endpoints
-  return [firstPoint, lastPoint];
+  return simplifyIndices(points, tolerance).map((i) => points[i]);
 }
 
 /**

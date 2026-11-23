@@ -265,7 +265,7 @@ describe('Options Type Validation', () => {
       height: 400,
       theme: 'green',
       orientation: 'horizontal',
-      barWidth: 0.7,
+      barGap: 0.3,
     };
     expect(options.orientation).toBe('horizontal');
   });
@@ -283,7 +283,7 @@ describe('Options Type Validation', () => {
       min: 0,
       max: 100,
       theme: 'yellow',
-      arcWidth: 20,
+      thickness: 20,
       showValue: true,
       label: 'Progress',
     };

@@ -35,7 +35,9 @@ import {
   rgbToHex,
   withOpacity,
 } from './utils/colors';
+import { formatNumber } from './utils/format';
 import { clamp, easings, getEasing, lerp, mean, median, round, scale, sum } from './utils/math';
+import { seriesColor, themeColor, uiColors } from './utils/theme';
 
 import { createChart, VERSION } from './index';
 
@@ -75,6 +77,9 @@ const CyberCharts = {
     createGradient,
     getGlowShadow,
     chartColors,
+    themeColor,
+    seriesColor,
+    uiColors,
   },
 
   // Math utilities
@@ -88,6 +93,7 @@ const CyberCharts = {
     median,
     easings,
     getEasing,
+    formatNumber,
   },
 
   // Version
