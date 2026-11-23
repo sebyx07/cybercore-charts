@@ -15,6 +15,7 @@
 - .dz/maintainer/maintainer.yml established (validates against maintainer.v1.json; `dz-contract` answers ok)
 - .dz/maintainer/reviewer.md established (public API, SSR safety, unique SVG ids, accessibility, tokens; community tone)
 - .dz/schedules/{health,release-due,security-release,improve}.md established
+- platform-standard briefs: repo-census and repo-score scheduled; hygiene, devops and fix-sweep offered (entries commented)
 - .dz/pipeline/agent-pipeline.json established
 
 ## `brain` — ok
@@ -44,6 +45,7 @@
 ## `commands` — ok
 
 - .claude/commands/release.md (prepares the release pull request; never publishes)
+- .claude/commands/bug-sweep.md (sweeps one area with chart-specific detectors; a failing test first)
 
 ## `access` — pending
 
@@ -73,6 +75,7 @@
 
 ## `docs_readme` — ok
 
+- docs/README.md indexes docs/idea/ (overview, principles, stack, data-model, deployment, direction draft) and docs/standards/
 - README.md rewritten (the old one documented PieChart, RadarChart, createTheme and options that never existed); CONTRIBUTING.md, SECURITY.md, CODE_OF_CONDUCT.md, RELEASE.md, CHANGELOG.md with the past releases reconstructed
 
 ## `gate_proved` — pending

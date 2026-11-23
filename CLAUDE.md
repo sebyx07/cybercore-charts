@@ -75,6 +75,7 @@ tests/visual/           Playwright screenshots of the demo
 demo/                   documentation site and playgrounds (React + Vite), GitHub Pages; not in the package
 scripts/                build-types, check-size, check-package, visual.sh, changelog-notes.sh
 bin/                    setup, dev, stop, check, repo-guards, api-diff, docs-check
+docs/                   idea/ (intent, direction draft), standards/ (rule → guard)
 .github/                ci.yml, release.yml, deploy.yml, dependabot, issue and PR forms
 .dz/                    developerz.ai maintainer policy, reviewer prompt, scheduled briefs
 llms.txt                API reference for AI tools that use the library
@@ -111,7 +112,7 @@ Merging a `package.json` version bump to `main` is the release: `release.yml` pr
 
 ## PR conventions
 
-Branch `<type>/<slug>` off `main`. Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`). One concern per PR; a `.github/` change never shares a PR with code; outside contributors' changes to `.github/`, `bin/`, `.dz/`, `.claude/` are owner-only. Visible change → before/after screenshots at 1440 and 390. User-visible change → a `CHANGELOG.md` `## [Unreleased]` line (credit contributors by handle). Required check: `CI OK` (verify the ruleset: `gh api repos/sebyx07/cybercore-charts/rulesets`). Skills: `verify-change`, `add-chart`. Command: `/release`. Agent: `visual-a11y-reviewer`.
+Branch `<type>/<slug>` off `main`. Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`). One concern per PR; a `.github/` change never shares a PR with code; outside contributors' changes to `.github/`, `bin/`, `.dz/`, `.claude/` are owner-only. Visible change → before/after screenshots at 1440 and 390. User-visible change → a `CHANGELOG.md` `## [Unreleased]` line (credit contributors by handle). Required check: `CI OK` (verify the ruleset: `gh api repos/sebyx07/cybercore-charts/rulesets`). Skills: `verify-change`, `add-chart`. Commands: `/release`, `/bug-sweep`. Agent: `visual-a11y-reviewer`.
 
 ## Where to look (load on demand)
 
@@ -119,4 +120,5 @@ Branch `<type>/<slug>` off `main`. Conventional Commits (`feat:`, `fix:`, `docs:
 - Demo site: routes, playgrounds, snippet rules → `demo/CLAUDE.md`
 - Workflows, pinning, release lane → `.github/CLAUDE.md`, `RELEASE.md`
 - Maintainer policy, review rules, scheduled checkups → `.dz/README.md`
+- Product intent and direction (draft) → `docs/idea/`, index `docs/README.md`
 - What users are told: `README.md`, `llms.txt`, `CONTRIBUTING.md`
