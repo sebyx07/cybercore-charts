@@ -4,7 +4,7 @@
 
 Every code block in this file is type-checked against the library's sources (`bin/docs-check`), so the options, methods and imports shown here exist. Types are the source of truth: `src/types.ts`.
 
-- npm: `cybercore-charts` (version 0.2.0 in this file's CDN URLs)
+- npm: `cybercore-charts` (version 0.3.0 in this file's CDN URLs)
 - Demo and playgrounds: https://sebyx07.github.io/cybercore-charts/
 - Repository: https://github.com/sebyx07/cybercore-charts
 - Companion CSS framework: https://github.com/sebyx07/cybercore-css
@@ -393,7 +393,7 @@ The first argument is the chart type; every named argument is an option of that 
 
 ```html
 <div id="chart" style="height: 280px"></div>
-<script src="https://cdn.jsdelivr.net/npm/cybercore-charts@0.2.0/dist/cybercore-charts.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cybercore-charts@0.3.0/dist/cybercore-charts.umd.min.js"></script>
 <script>
   const chart = CyberCharts.createChart('donut', '#chart', {
     data: [

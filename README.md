@@ -86,7 +86,7 @@ Pin the version, so a new release never changes your page under you:
 ```html
 <div id="storage"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/cybercore-charts@0.2.0/dist/cybercore-charts.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cybercore-charts@0.3.0/dist/cybercore-charts.umd.min.js"></script>
 <script>
   CyberCharts.createChart('donut', '#storage', {
     data: [
@@ -101,7 +101,7 @@ Pin the version, so a new release never changes your page under you:
 ```
 
 The same file is on unpkg:
-`https://unpkg.com/cybercore-charts@0.2.0/dist/cybercore-charts.umd.min.js`. The
+`https://unpkg.com/cybercore-charts@0.3.0/dist/cybercore-charts.umd.min.js`. The
 [docs page](https://sebyx07.github.io/cybercore-charts/docs/) prints this tag
 with a Subresource Integrity hash.
 
