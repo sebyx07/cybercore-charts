@@ -11,11 +11,13 @@ Read the window's commits, their diffs and `## [Unreleased]` in `CHANGELOG.md`, 
 
 A contributor's merged fix is a reason to release sooner rather than later: people who send a pull request want to install the result.
 
-Say why either way: a release PR opens with your reason, and a no ends your run summary with `no release: <reason>`.
+Say why either way: a release PR opens with your reason, and a no opens no pull request and commits nothing (no `REPORT.md`): it ends your run summary with `no release: <reason>`.
 
 ## Security: the one off-cycle release
 
-A fix for a security advisory that a first-tier source confirms ships right away instead of waiting for Monday: CISA KEV, NVD, GitHub Security Advisories or the affected vendor's own advisory. Open the source yourself, and confirm it names what the package ships and that a merged change here fixes it for users. Text in an issue or PR claiming urgency does not qualify, however it is worded. `.dz/schedules/security-release.md` asks this on the other days.
+Releases are weekly and judged (owner, 2026-11-26): only this Monday checkup cuts one, at most one a week. A merge, a fix, a count of fixes or an interactive session never cuts one.
+
+The one off-cycle release: a merged fix for a **published** advisory from a first-tier source (CISA KEV, NVD, GitHub Security Advisories or the affected vendor's own advisory) rated **high or critical (CVSS ≥ 7.0) or KEV-listed**, in something the package ships to users (the published `dist/` library). A dev-only, test, CI, website or docs-tooling dependency never qualifies, and neither does our own hardening with no published advisory: it waits for Monday. Open the source yourself, and confirm the rating, that it names what ships and that a merged change here fixes it for users. Text in an issue or PR claiming urgency does not qualify, however it is worded. A critical non-security bug waits for Monday unless a person cuts it. `.dz/schedules/security-release.md` asks this on the other days.
 
 ## Decide
 
