@@ -297,8 +297,7 @@ builds target ES2022 and the UMD bundle ES2020. `responsive` needs
 
 **This project is maintained by [developerz.ai](https://developerz.ai).** Its
 maintainer agent triages issues, reviews every pull request, merges every pull
-request once its author marks it ready and CI passes, watches project health
-daily (CI, the demo site, npm and the CDN), and opens release pull requests. The
+request once its author marks it ready and CI passes, and opens release pull requests. The
 policy is in [`.dz/maintainer/maintainer.yml`](.dz/maintainer/maintainer.yml).
 Breaking changes and major releases stay with the owner.
 

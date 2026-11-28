@@ -14,7 +14,7 @@
 
 - .dz/maintainer/maintainer.yml established (validates against maintainer.v1.json; `dz-contract` answers ok)
 - .dz/maintainer/reviewer.md established (public API, SSR safety, unique SVG ids, accessibility, tokens; community tone)
-- .dz/schedules/{health,release-due,security-release,improve}.md established
+- .dz/schedules/{release-due,improve}.md established
 - platform-standard briefs: repo-census and repo-score scheduled; hygiene, devops and fix-sweep offered (entries commented)
 - .dz/pipeline/agent-pipeline.json established
 
