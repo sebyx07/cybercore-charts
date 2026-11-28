@@ -297,9 +297,10 @@ builds target ES2022 and the UMD bundle ES2020. `responsive` needs
 
 **This project is maintained by [developerz.ai](https://developerz.ai).** Its
 maintainer agent triages issues, reviews every pull request, merges every pull
-request once its author marks it ready and CI passes, and opens release pull requests. The
-policy is in [`.dz/maintainer/maintainer.yml`](.dz/maintainer/maintainer.yml).
-Breaking changes and major releases stay with the owner.
+request once its author marks it ready and CI passes, and opens release pull
+requests. The policy is in
+[`.dz/maintainer/maintainer.yml`](.dz/maintainer/maintainer.yml). Breaking
+changes and major releases stay with the owner.
 
 - **Using Cybercore Charts in your project?** Point your agent at
   [`llms.txt`](llms.txt), the API reference in one file. Every code sample in it

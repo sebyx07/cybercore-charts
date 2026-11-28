@@ -21,4 +21,7 @@ by hand.
   integrity hash come from `demo/src/data/cdn.json`, rewritten by
   `demo/scripts/sync-cdn.mjs` after a release is on npm.
 
-Outcome checks: a workflow run is its own verdict, and the platform files a fix when `main` is red. Nothing polls the published package or the site on a schedule: the `health` checkup was removed on 2026-11-28 (across the fleet it fired 270 times in 30 days and produced no merged fix).
+Outcome checks: a workflow run is its own verdict, and the platform files a fix
+when `main` is red. Nothing polls the published package or the site on a
+schedule: the `health` checkup was removed on 2026-11-28 (across the fleet it
+fired 270 times in 30 days and produced no merged fix).
